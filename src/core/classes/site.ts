@@ -95,7 +95,7 @@ export class CoreSite {
         '3.9': 2020061500,
         '3.10': 2020110900,
         '3.11': 2021051700,
-        '4.0': 2022041900,
+        '4.0': 2021100300, // @todo [4.0] replace with right value when released. Using a tmp value to be able to test new things.
     };
 
     // Possible cache update frequencies.
@@ -373,16 +373,6 @@ export class CoreSite {
      */
     setOAuthId(oauthId: number | undefined): void {
         this.oauthId = oauthId;
-    }
-
-    /**
-     * Check if current user is Admin.
-     * Works properly since v3.8. See more in: {@link} https://tracker.moodle.org/browse/MDL-65550
-     *
-     * @returns Whether the user is Admin.
-     */
-    isAdmin(): boolean {
-        return this.getInfo()?.userissiteadmin ?? false;
     }
 
     /**
