@@ -25,7 +25,6 @@ import {
     ViewChild,
     OnDestroy,
     Inject,
-    ChangeDetectorRef,
 } from '@angular/core';
 import { IonContent } from '@ionic/angular';
 
@@ -35,7 +34,7 @@ import { CoreIframeUtils, CoreIframeUtilsProvider } from '@services/utils/iframe
 import { CoreTextUtils } from '@services/utils/text';
 import { CoreUtils } from '@services/utils/utils';
 import { CoreSite } from '@classes/site';
-import { NgZone, Translate } from '@singletons';
+import { NgZone, Platform, Translate } from '@singletons';
 import { CoreExternalContentDirective } from './external-content';
 import { CoreLinkDirective } from './link';
 import { CoreFilter, CoreFilterFilter, CoreFilterFormatTextOptions } from '@features/filter/services/filter';
@@ -50,7 +49,6 @@ import { CoreText } from '@singletons/text';
 import { CoreDom } from '@singletons/dom';
 import { CoreEvents } from '@singletons/events';
 import { CoreRefreshContext, CORE_REFRESH_CONTEXT } from '@/core/utils/refresh-context';
-import { CorePlatform } from '@services/platform';
 
 /**
  * Directive to format text rendered. It renders the HTML and treats all links and media, using CoreLinkDirective
@@ -116,7 +114,7 @@ export class CoreFormatTextDirective implements OnChanges, OnDestroy, AsyncCompo
 
         this.afterRender = new EventEmitter<void>();
 
-        this.element.addEventListener('click', (event) => this.elementClicked(event));
+        this.element.addEventListener('click', this.elementClicked.bind(this));
 
         this.siteId = this.siteId || CoreSites.getCurrentSiteId();
     }
@@ -177,9 +175,6 @@ export class CoreFormatTextDirective implements OnChanges, OnDestroy, AsyncCompo
         extContent.poster = element.getAttribute('poster') || undefined;
 
         extContent.ngAfterViewInit();
-
-        const changeDetectorRef = this.viewContainerRef.injector.get(ChangeDetectorRef);
-        changeDetectorRef.markForCheck();
 
         return extContent;
     }
@@ -605,7 +600,7 @@ export class CoreFormatTextDirective implements OnChanges, OnDestroy, AsyncCompo
                 }
 
                 if (openInApp) {
-                    site.openInAppWithAutoLogin(url);
+                    site.openInAppWithAutoLoginIfSameSite(url);
 
                     if (refreshOnResume && this.refreshContext) {
                         // Refresh the context when the IAB is closed.
@@ -614,13 +609,13 @@ export class CoreFormatTextDirective implements OnChanges, OnDestroy, AsyncCompo
                         });
                     }
                 } else {
-                    site.openInBrowserWithAutoLogin(url, undefined, {
+                    site.openInBrowserWithAutoLoginIfSameSite(url, undefined, {
                         showBrowserWarning: !confirmMessage,
                     });
 
                     if (refreshOnResume && this.refreshContext) {
                         // Refresh the context when the app is resumed.
-                        CoreSubscriptions.once(CorePlatform.resume, () => {
+                        CoreSubscriptions.once(Platform.resume, () => {
                             NgZone.run(async () => {
                                 this.refreshContext?.refreshContext();
                             });

@@ -23,14 +23,14 @@ import { CoreCourseModuleDelegate } from '@features/course/services/module-deleg
 import { CoreCourseModulePrefetchDelegate } from '@features/course/services/module-prefetch-delegate';
 import { CoreCourses, CoreEnrolledCourseData } from '@features/courses/services/courses';
 import { CoreGradesFormattedRow, CoreGradesFormattedTableRow, CoreGradesHelper } from '@features/grades/services/grades-helper';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreFilepool } from '@services/filepool';
 import { CoreNavigator } from '@services/navigator';
 import { CoreSites } from '@services/sites';
 import { CoreDomUtils } from '@services/utils/dom';
 import { CoreTextUtils } from '@services/utils/text';
 import { CoreUtils } from '@services/utils/utils';
-import { ModalController, NgZone } from '@singletons';
+import { ModalController, Network, NgZone } from '@singletons';
 import { CoreEventObserver, CoreEvents } from '@singletons/events';
 import { Subscription } from 'rxjs';
 
@@ -60,7 +60,7 @@ export class CoreCourseModuleSummaryComponent implements OnInit, OnDestroy {
 
     removeFilesLoading = false;
     prefetchLoading = false;
-    canPrefetch = false;
+    canPrefetch = false;;
     prefetchDisabled = false;
     size?: number; // Size in bytes
     downloadTimeReadable = ''; // Last download time in a readable format.
@@ -79,13 +79,13 @@ export class CoreCourseModuleSummaryComponent implements OnInit, OnDestroy {
 
     constructor() {
         this.siteId = CoreSites.getCurrentSiteId();
-        this.isOnline = CoreNetwork.isOnline();
+        this.isOnline = CoreApp.isOnline();
 
         // Refresh online status when changes.
-        this.onlineSubscription = CoreNetwork.onChange().subscribe(() => {
+        this.onlineSubscription = Network.onChange().subscribe(() => {
             // Execute the callback in the Angular zone, so change detection doesn't stop working.
             NgZone.run(() => {
-                this.isOnline = CoreNetwork.isOnline();
+                this.isOnline = CoreApp.isOnline();
             });
         });
     }

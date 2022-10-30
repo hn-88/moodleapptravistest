@@ -22,7 +22,7 @@
 
 }
 
-:host-context(html.dark) {
+:host-context(body.dark) {
     --header-background: var(--gray-900);
     --odd-cell-background: var(--gray-800);
     --odd-cell-hover: var(--gray-600);

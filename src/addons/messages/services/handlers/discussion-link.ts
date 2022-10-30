@@ -46,8 +46,10 @@ export class AddonMessagesDiscussionLinkHandlerService extends CoreContentLinksH
     ): CoreContentLinksAction[] | Promise<CoreContentLinksAction[]> {
         return [{
             action: (siteId): void => {
-                const userId = parseInt(params.id || params.user2, 10);
-                CoreNavigator.navigateToSitePath(`/messages/discussion/user/${userId}`, { siteId });
+                const stateParams = {
+                    userId: parseInt(params.id || params.user2, 10),
+                };
+                CoreNavigator.navigateToSitePath('/messages/discussion', { params: stateParams, siteId });
             },
         }];
     }

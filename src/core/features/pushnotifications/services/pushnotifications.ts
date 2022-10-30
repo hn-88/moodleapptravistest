@@ -25,7 +25,7 @@ import { CoreTextUtils } from '@services/utils/text';
 import { CoreConfig } from '@services/config';
 import { CoreConstants } from '@/core/constants';
 import { CoreSite, CoreSiteInfo } from '@classes/site';
-import { makeSingleton, Badge, Push, Device, Translate, ApplicationInit, NgZone } from '@singletons';
+import { makeSingleton, Badge, Push, Device, Translate, Platform, ApplicationInit, NgZone } from '@singletons';
 import { CoreLogger } from '@singletons/logger';
 import { CoreEvents } from '@singletons/events';
 import {
@@ -46,7 +46,6 @@ import { CoreDatabaseTable } from '@classes/database/database-table';
 import { CoreDatabaseCachingStrategy, CoreDatabaseTableProxy } from '@classes/database/database-table-proxy';
 import { CoreObject } from '@singletons/object';
 import { lazyMap, LazyMap } from '@/core/utils/lazy-map';
-import { CorePlatform } from '@services/platform';
 
 /**
  * Service to handle push notifications.
@@ -153,7 +152,7 @@ export class CorePushNotificationsProvider {
      * @return Promise resolved when done.
      */
     protected async initializeDefaultChannel(): Promise<void> {
-        await CorePlatform.ready();
+        await Platform.ready();
 
         // Create the default channel.
         this.createDefaultChannel();
@@ -205,7 +204,7 @@ export class CorePushNotificationsProvider {
      * @return Whether the device can be registered in Moodle.
      */
     canRegisterOnMoodle(): boolean {
-        return !!this.pushID && CorePlatform.isMobile();
+        return !!this.pushID && CoreApp.isMobile();
     }
 
     /**
@@ -257,13 +256,14 @@ export class CorePushNotificationsProvider {
             return;
         }
 
-        await new Promise<void>(resolve => {
-            win.PushNotification.enableAnalytics(resolve, (error) => {
-                this.logger.error('Error enabling or disabling Firebase analytics', enable, error);
+        const deferred = CoreUtils.promiseDefer<void>();
 
-                resolve();
-            }, !!enable);
-        });
+        win.PushNotification.enableAnalytics(deferred.resolve, (error) => {
+            this.logger.error('Error enabling or disabling Firebase analytics', enable, error);
+            deferred.resolve();
+        }, !!enable);
+
+        await deferred.promise;
     }
 
     /**
@@ -357,12 +357,14 @@ export class CorePushNotificationsProvider {
             return;
         }
 
-        await new Promise<void>(resolve => {
-            win.PushNotification.logEvent(resolve, (error) => {
-                this.logger.error('Error logging firebase event', name, error);
-                resolve();
-            }, name, data, !!filter);
-        });
+        const deferred = CoreUtils.promiseDefer<void>();
+
+        win.PushNotification.logEvent(deferred.resolve, (error) => {
+            this.logger.error('Error logging firebase event', name, error);
+            deferred.resolve();
+        }, name, data, !!filter);
+
+        await deferred.promise;
     }
 
     /**
@@ -431,7 +433,7 @@ export class CorePushNotificationsProvider {
     /**
      * Function called when a push notification is clicked. Redirect the user to the right state.
      *
-     * @param data Notification data.
+     * @param notification Notification.
      * @return Promise resolved when done.
      */
     async notificationClicked(data: CorePushNotificationsNotificationBasicData): Promise<void> {
@@ -543,7 +545,7 @@ export class CorePushNotificationsProvider {
      * @return Promise resolved when device is unregistered.
      */
     async unregisterDeviceOnMoodle(site: CoreSite): Promise<void> {
-        if (!site || !CorePlatform.isMobile()) {
+        if (!site || !CoreApp.isMobile()) {
             throw new CoreError('Cannot unregister device');
         }
 
@@ -625,10 +627,13 @@ export class CorePushNotificationsProvider {
 
         const total = counters.reduce((previous, counter) => previous + counter, 0);
 
-        if (CorePlatform.isMobile()) {
-            // Set the app badge on mobile.
-            await Badge.set(total);
+        if (!CoreApp.isMobile()) {
+            // Browser doesn't have an app badge, stop.
+            return total;
         }
+
+        // Set the app badge.
+        await Badge.set(total);
 
         return total;
     }
@@ -748,7 +753,11 @@ export class CorePushNotificationsProvider {
                 CoreEvents.trigger(CoreEvents.DEVICE_REGISTERED_IN_MOODLE, {}, site.getId());
 
                 // Insert the device in the local DB.
-                await CoreUtils.ignoreErrors(this.registeredDevicesTables[site.getId()].insert(data));
+                try {
+                    await this.registeredDevicesTables[site.getId()].insert(data);
+                } catch (err) {
+                    // Ignore errors.
+                }
             }
         } finally {
             // Remove pending unregisters for this site.

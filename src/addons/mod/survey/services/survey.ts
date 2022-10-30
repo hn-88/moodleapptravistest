@@ -17,7 +17,7 @@ import { CoreError } from '@classes/errors/error';
 import { CoreSite, CoreSiteWSPreSets } from '@classes/site';
 import { CoreCourseCommonModWSOptions } from '@features/course/services/course';
 import { CoreCourseLogHelper } from '@features/course/services/log-helper';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreFilepool } from '@services/filepool';
 import { CoreSites, CoreSitesCommonWSOptions } from '@services/sites';
 import { CoreUtils } from '@services/utils/utils';
@@ -257,7 +257,7 @@ export class AddonModSurveyProvider {
 
         siteId = siteId || CoreSites.getCurrentSiteId();
 
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             // App is offline, store the message.
             return storeOffline();
         }

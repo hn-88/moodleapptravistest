@@ -34,7 +34,7 @@ export class AddonMessagesSettingsHandlerService implements CoreSettingsHandler 
      * @return Whether or not the handler is enabled on a site level.
      */
     async isEnabled(): Promise<boolean> {
-        return AddonMessages.isPluginEnabled();
+        return await AddonMessages.isPluginEnabled();
     }
 
     /**

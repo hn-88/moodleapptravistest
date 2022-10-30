@@ -1,6 +1,9 @@
-<img *ngIf="completion && completion.tracking !== 1" [src]="completionImage" [alt]="completionDescription$ | async">
+<img *ngIf="completion && completion.tracking !== 1" [src]="completionImage" [alt]="completionDescription">
 
-<ion-button fill="clear" *ngIf="completion && completion.tracking === 1" (click)="completionClicked($event)"
-    [title]="completionDescription$ | async">
+<ion-button
+    fill="clear"
+    *ngIf="completion && completion.tracking === 1"
+    (click)="completionClicked($event)"
+    [title]="completionDescription">
     <img [src]="completionImage" role="presentation" alt="">
 </ion-button>

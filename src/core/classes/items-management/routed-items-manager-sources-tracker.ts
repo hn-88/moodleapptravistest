@@ -31,26 +31,6 @@ export class CoreRoutedItemsManagerSourcesTracker {
     private static instanceIds: WeakMap<CoreRoutedItemsManagerSource, string> = new WeakMap();
 
     /**
-     * Retrieve an instance given the constructor arguments or id.
-     *
-     * @param constructor Source constructor.
-     * @param constructorArgumentsOrId Arguments to create a new instance, or the id if it's known.
-     * @returns Source.
-     */
-    static getSource<T extends CoreRoutedItemsManagerSource, C extends SourceConstructor<T>>(
-        constructor: C,
-        constructorArgumentsOrId: ConstructorParameters<C> | string,
-    ): SourceConstuctorInstance<C> | null {
-        const id = typeof constructorArgumentsOrId === 'string'
-            ? constructorArgumentsOrId
-            : constructor.getSourceId(...constructorArgumentsOrId);
-        const constructorInstances = this.getConstructorInstances(constructor);
-
-        return constructorInstances[id]?.instance as SourceConstuctorInstance<C>
-            ?? null;
-    }
-
-    /**
      * Create an instance of the given source or retrieve one if it's already in use.
      *
      * @param constructor Source constructor.
@@ -62,9 +42,9 @@ export class CoreRoutedItemsManagerSourcesTracker {
         constructorArguments: ConstructorParameters<C>,
     ): SourceConstuctorInstance<C> {
         const id = constructor.getSourceId(...constructorArguments);
+        const constructorInstances = this.getConstructorInstances(constructor);
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return this.getSource(constructor, id) as any
+        return constructorInstances[id]?.instance as SourceConstuctorInstance<C>
             ?? this.createInstance(id, constructor, constructorArguments);
     }
 

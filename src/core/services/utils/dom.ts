@@ -46,6 +46,7 @@ import { CoreViewerImageComponent } from '@features/viewer/components/image/imag
 import { CoreFormFields, CoreForms } from '../../singletons/form';
 import { CoreModalLateralTransitionEnter, CoreModalLateralTransitionLeave } from '@classes/modal-lateral-transition';
 import { CoreZoomLevel } from '@features/settings/services/settings-helper';
+import { CoreErrorWithTitle } from '@classes/errors/errorwithtitle';
 import { AddonFilterMultilangHandler } from '@addons/filter/multilang/services/handlers/multilang';
 import { CoreSites } from '@services/sites';
 import { NavigationStart } from '@angular/router';
@@ -53,7 +54,6 @@ import { filter } from 'rxjs/operators';
 import { Subscription } from 'rxjs';
 import { CoreComponentsRegistry } from '@singletons/components-registry';
 import { CoreDom } from '@singletons/dom';
-import { CoreNetwork } from '@services/network';
 
 /*
  * "Utils" service with helper functions for UI, DOM elements and HTML code.
@@ -170,7 +170,7 @@ export class CoreDomUtilsProvider {
         limitedThreshold = limitedThreshold === undefined ? CoreConstants.DOWNLOAD_THRESHOLD : limitedThreshold;
 
         let wifiPrefix = '';
-        if (CoreNetwork.isNetworkAccessLimited()) {
+        if (CoreApp.isNetworkAccessLimited()) {
             wifiPrefix = Translate.instant('core.course.confirmlimiteddownload');
         }
 
@@ -194,7 +194,7 @@ export class CoreDomUtilsProvider {
                 ),
             );
         } else if (alwaysConfirm || size.size >= wifiThreshold ||
-                (CoreNetwork.isNetworkAccessLimited() && size.size >= limitedThreshold)) {
+                (CoreApp.isNetworkAccessLimited() && size.size >= limitedThreshold)) {
             message = message || (size.size === 0 ? 'core.course.confirmdownloadzerosize' : 'core.course.confirmdownload');
 
             return this.showConfirm(
@@ -670,7 +670,7 @@ export class CoreDomUtilsProvider {
      * @param error Error to check.
      * @return Whether it's a canceled error.
      */
-    isSilentError(error: CoreAnyError): boolean {
+    isSilentError(error: CoreError | CoreTextErrorObject | string): boolean {
         return error instanceof CoreSilentError;
     }
 
@@ -678,29 +678,30 @@ export class CoreDomUtilsProvider {
      * Wait an element to exists using the findFunction.
      *
      * @param findFunction The function used to find the element.
-     * @param retries Number of retries before giving up.
-     * @param retryAfter Milliseconds to wait before retrying if the element wasn't found.
      * @return Resolved if found, rejected if too many tries.
      * @deprecated since app 4.0 Use CoreDom.waitToBeInsideElement instead.
      */
-    async waitElementToExist(
-        findFunction: () => HTMLElement | null,
-        retries: number = 100,
-        retryAfter: number = 100,
-    ): Promise<HTMLElement> {
-        const element = findFunction();
+    waitElementToExist(findFunction: () => HTMLElement | null): Promise<HTMLElement> {
+        const promiseInterval = CoreUtils.promiseDefer<HTMLElement>();
+        let tries = 100;
 
-        if (!element && retries === 0) {
-            throw Error('Element not found');
-        }
+        const clear = setInterval(() => {
+            const element: HTMLElement | null = findFunction();
 
-        if (!element) {
-            await CoreUtils.wait(retryAfter);
+            if (element) {
+                clearInterval(clear);
+                promiseInterval.resolve(element);
+            } else {
+                tries--;
 
-            return this.waitElementToExist(findFunction, retries - 1);
-        }
+                if (tries <= 0) {
+                    clearInterval(clear);
+                    promiseInterval.reject();
+                }
+            }
+        }, 100);
 
-        return element;
+        return promiseInterval.promise;
     }
 
     /**
@@ -1344,20 +1345,15 @@ export class CoreDomUtilsProvider {
 
         const alertOptions: AlertOptions = {
             message: message,
+            buttons: [Translate.instant('core.ok')],
         };
 
         if (this.isNetworkError(message, error)) {
             alertOptions.cssClass = 'core-alert-network-error';
-        } else if (typeof error !== 'string' && 'title' in error) {
+        } else if (error instanceof CoreErrorWithTitle) {
             alertOptions.header = error.title || undefined;
         } else {
             alertOptions.header = Translate.instant('core.error');
-        }
-
-        if (typeof error !== 'string' && 'buttons' in error && typeof error.buttons !== 'undefined') {
-            alertOptions.buttons = error.buttons;
-        } else {
-            alertOptions.buttons = [Translate.instant('core.ok')];
         }
 
         return this.showAlertWithOptions(alertOptions, autocloseTime);
@@ -1378,8 +1374,8 @@ export class CoreDomUtilsProvider {
         needsTranslate = false,
         autocloseTime?: number,
     ): Promise<HTMLIonAlertElement | null> {
-        if (this.isCanceledError(error) || this.isSilentError(error)) {
-            // It's a canceled or a silent error, don't display an error.
+        if (this.isCanceledError(error)) {
+            // It's a canceled error, don't display an error.
             return null;
         }
 
@@ -1494,8 +1490,7 @@ export class CoreDomUtilsProvider {
      * @param header Modal header.
      * @param placeholderOrLabel Placeholder (for textual/numeric inputs) or label (for radio/checkbox). By default, "Password".
      * @param type Type of the input element. By default, password.
-     * @param buttons Buttons. If not provided or it's an object with texts, OK and Cancel buttons will be displayed.
-     * @para options Other alert options.
+     * @param buttons Buttons. If not provided, OK and Cancel buttons will be displayed.
      * @return Promise resolved with the input data (true for checkbox/radio) if the user clicks OK, rejected if cancels.
      */
     showPrompt(
@@ -1503,8 +1498,7 @@ export class CoreDomUtilsProvider {
         header?: string,
         placeholderOrLabel?: string,
         type: TextFieldTypes | 'checkbox' | 'radio' | 'textarea' = 'password',
-        buttons?: PromptButton[] | { okText?: string; cancelText?: string },
-        options: AlertOptions = {},
+        buttons?: PromptButton[],
     ): Promise<any> { // eslint-disable-line @typescript-eslint/no-explicit-any
         return new Promise((resolve, reject) => {
             placeholderOrLabel = placeholderOrLabel ?? Translate.instant('core.login.password');
@@ -1523,19 +1517,21 @@ export class CoreDomUtilsProvider {
                 }
             };
 
-            options.header = header;
-            options.message = message;
-            options.inputs = [
-                {
-                    name: 'promptinput',
-                    placeholder: placeholderOrLabel,
-                    label: placeholderOrLabel,
-                    type,
-                    value: (isCheckbox || isRadio) ? true : undefined,
-                },
-            ];
+            const options: AlertOptions = {
+                header,
+                message,
+                inputs: [
+                    {
+                        name: 'promptinput',
+                        placeholder: placeholderOrLabel,
+                        label: placeholderOrLabel,
+                        type,
+                        value: (isCheckbox || isRadio) ? true : undefined,
+                    },
+                ],
+            };
 
-            if (Array.isArray(buttons) && buttons.length) {
+            if (buttons?.length) {
                 options.buttons = buttons.map((button) => ({
                     ...button,
                     handler: (data) => {
@@ -1553,14 +1549,14 @@ export class CoreDomUtilsProvider {
                 // Default buttons.
                 options.buttons = [
                     {
-                        text: buttons && 'cancelText' in buttons ? buttons.cancelText : Translate.instant('core.cancel'),
+                        text: Translate.instant('core.cancel'),
                         role: 'cancel',
                         handler: () => {
                             reject();
                         },
                     },
                     {
-                        text: buttons && 'okText' in buttons ? buttons.okText : Translate.instant('core.ok'),
+                        text: Translate.instant('core.ok'),
                         handler: resolvePromise,
                     },
                 ];
@@ -1618,19 +1614,23 @@ export class CoreDomUtilsProvider {
     async showToast(
         text: string,
         needsTranslate?: boolean,
-        duration: ToastDuration | number = ToastDuration.SHORT,
+        duration: number = 2000,
         cssClass: string = '',
     ): Promise<HTMLIonToastElement> {
         if (needsTranslate) {
             text = Translate.instant(text);
         }
 
-        return this.showToastWithOptions({
+        const loader = await ToastController.create({
             message: text,
             duration: duration,
             position: 'bottom',
             cssClass: cssClass,
         });
+
+        await loader.present();
+
+        return loader;
     }
 
     /**
@@ -1639,15 +1639,12 @@ export class CoreDomUtilsProvider {
      * @param options Options.
      * @return Promise resolved with Toast instance.
      */
-    async showToastWithOptions(options: ShowToastOptions): Promise<HTMLIonToastElement> {
-        // Convert some values and set default values.
-        const toastOptions: ToastOptions = {
-            ...options,
-            duration: CoreConstants.CONFIG.toastDurations[options.duration] ?? options.duration ?? 2000,
-            position: options.position ?? 'bottom',
-        };
+    async showToastWithOptions(options: ToastOptions): Promise<HTMLIonToastElement> {
+        // Set some default values.
+        options.duration = options.duration ?? 2000;
+        options.position = options.position ?? 'bottom';
 
-        const loader = await ToastController.create(toastOptions);
+        const loader = await ToastController.create(options);
 
         await loader.present();
 
@@ -1782,7 +1779,7 @@ export class CoreDomUtilsProvider {
             leaveAnimation: CoreModalLateralTransitionLeave,
         }, options);
 
-        return this.openModal<T>(options);
+        return await this.openModal<T>(options);
     }
 
     /**
@@ -1795,12 +1792,12 @@ export class CoreDomUtilsProvider {
 
         const { waitForDismissCompleted, ...popoverOptions } = options;
         const popover = await PopoverController.create(popoverOptions);
-        const zoomLevel = await CoreConfig.get(CoreConstants.SETTINGS_ZOOM_LEVEL, CoreConstants.CONFIG.defaultZoomLevel);
+        const zoomLevel = await CoreConfig.get(CoreConstants.SETTINGS_ZOOM_LEVEL, CoreZoomLevel.NORMAL);
 
         await popover.present();
 
         // Fix popover position if zoom is applied.
-        if (zoomLevel !== CoreZoomLevel.NONE) {
+        if (zoomLevel !== CoreZoomLevel.NORMAL) {
             switch (getMode()) {
                 case 'ios':
                     fixIOSPopoverPosition(popover, options.event);
@@ -1943,38 +1940,6 @@ export class CoreDomUtilsProvider {
         await CoreUtils.wait(50);
 
         return this.waitForResizeDone(windowWidth, windowHeight, retries+1);
-    }
-
-    /**
-     * Check whether a CSS class indicating an app mode is set.
-     *
-     * @param className Class name.
-     * @return Whether the CSS class is set.
-     */
-    hasModeClass(className: string): boolean {
-        return document.documentElement.classList.contains(className);
-    }
-
-    /**
-     * Get active mode CSS classes.
-     *
-     * @return Mode classes.
-     */
-    getModeClasses(): string[] {
-        return Array.from(document.documentElement.classList);
-    }
-
-    /**
-     * Toggle a CSS class in the root element used to indicate app modes.
-     *
-     * @param className Class name.
-     * @param enable Whether to add or remove the class.
-     */
-    toggleModeClass(className: string, enable?: boolean): void {
-        document.documentElement.classList.toggle(className, enable);
-
-        // @deprecated since 4.1
-        document.body.classList.toggle(className, enable);
     }
 
 }
@@ -2165,19 +2130,3 @@ export enum VerticalPoint {
     MID = 'mid',
     BOTTOM = 'bottom',
 }
-
-/**
- * Toast duration.
- */
-export enum ToastDuration {
-    LONG = 'long',
-    SHORT = 'short',
-    STICKY = 'sticky',
-}
-
-/**
- * Options for showToastWithOptions.
- */
-export type ShowToastOptions = Omit<ToastOptions, 'duration'> & {
-    duration: ToastDuration | number;
-};

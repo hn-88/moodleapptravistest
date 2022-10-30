@@ -14,10 +14,9 @@
 
 import { SQLiteObject } from '@ionic-native/sqlite/ngx';
 
-import { SQLite } from '@singletons';
+import { SQLite, Platform } from '@singletons';
 import { CoreError } from '@classes/errors/error';
 import { CoreDB } from '@services/db';
-import { CorePlatform } from '@services/platform';
 
 type SQLiteDBColumnType = 'INTEGER' | 'REAL' | 'TEXT' | 'BLOB';
 
@@ -1158,7 +1157,7 @@ export class SQLiteDB {
      * @returns Database.
      */
     protected async createDatabase(): Promise<SQLiteObject> {
-        await CorePlatform.ready();
+        await Platform.ready();
 
         return SQLite.create({ name: this.name, location: 'default' });
     }
@@ -1170,8 +1169,6 @@ export class SQLiteDB {
      * @returns Spy methods.
      */
     protected getDatabaseSpies(db: SQLiteObject): Partial<SQLiteObject> {
-        const dbName = this.name;
-
         return {
             async executeSql(statement, params) {
                 const start = performance.now();
@@ -1183,7 +1180,6 @@ export class SQLiteDB {
                         params,
                         sql: statement,
                         duration:  performance.now() - start,
-                        dbName,
                     });
 
                     return result;
@@ -1193,7 +1189,6 @@ export class SQLiteDB {
                         error,
                         sql: statement,
                         duration:  performance.now() - start,
-                        dbName,
                     });
 
                     throw error;
@@ -1211,7 +1206,6 @@ export class SQLiteDB {
                     CoreDB.logQuery({
                         sql,
                         duration: performance.now() - start,
-                        dbName,
                     });
 
                     return result;
@@ -1220,7 +1214,6 @@ export class SQLiteDB {
                         sql,
                         error,
                         duration: performance.now() - start,
-                        dbName,
                     });
 
                     throw error;

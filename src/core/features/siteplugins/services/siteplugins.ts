@@ -23,14 +23,12 @@ import { CoreFilepool } from '@services/filepool';
 import { CoreLang } from '@services/lang';
 import { CoreSites } from '@services/sites';
 import { CoreTextUtils } from '@services/utils/text';
-import { CoreUtils } from '@services/utils/utils';
+import { CoreUtils, PromiseDefer } from '@services/utils/utils';
 import { CoreWSExternalFile, CoreWSExternalWarning } from '@services/ws';
 import { makeSingleton } from '@singletons';
 import { CoreEvents } from '@singletons/events';
 import { CoreLogger } from '@singletons/logger';
 import { CoreSitePluginsModuleHandler } from '../classes/handlers/module-handler';
-import { CorePromisedValue } from '@classes/promised-value';
-import { CorePlatform } from '@services/platform';
 
 const ROOT_CACHE_KEY = 'CoreSitePlugins:';
 
@@ -46,7 +44,7 @@ export class CoreSitePluginsProvider {
     protected logger: CoreLogger;
     protected sitePlugins: {[name: string]: CoreSitePluginsHandler} = {}; // Site plugins registered.
     protected sitePluginPromises: {[name: string]: Promise<void>} = {}; // Promises of loading plugins.
-    protected fetchPluginsDeferred: CorePromisedValue<void>;
+    protected fetchPluginsDeferred: PromiseDefer<void>;
     protected moduleHandlerInstances: Record<string, CoreSitePluginsModuleHandler> = {};
 
     hasSitePluginsLoaded = false;
@@ -61,9 +59,9 @@ export class CoreSitePluginsProvider {
         });
 
         // Initialize deferred at start and on logout.
-        this.fetchPluginsDeferred = new CorePromisedValue();
+        this.fetchPluginsDeferred = CoreUtils.promiseDefer();
         CoreEvents.on(CoreEvents.LOGOUT, () => {
-            this.fetchPluginsDeferred = new CorePromisedValue();
+            this.fetchPluginsDeferred = CoreUtils.promiseDefer();
         });
     }
 
@@ -91,7 +89,7 @@ export class CoreSitePluginsProvider {
             applang: lang,
             appcustomurlscheme: CoreConstants.CONFIG.customurlscheme,
             appisdesktop: false,
-            appismobile: CorePlatform.isMobile(),
+            appismobile: CoreApp.isMobile(),
             appiswide: CoreApp.isWide(),
             appplatform: 'browser',
         };
@@ -302,23 +300,11 @@ export class CoreSitePluginsProvider {
         const data = await site.read<CoreSitePluginsGetPluginsSupportingMobileWSResponse>(
             'tool_mobile_get_plugins_supporting_mobile',
             {},
-            {
-                getFromCache: false,
-                cacheKey: this.getPluginsCacheKey(),
-            },
+            { getFromCache: false },
         );
 
         // Return enabled plugins.
         return data.plugins.filter((plugin) => this.isSitePluginEnabled(plugin, site));
-    }
-
-    /**
-     * Get cache key for get plugins WS call.
-     *
-     * @return Cache key.
-     */
-    protected getPluginsCacheKey(): string {
-        return ROOT_CACHE_KEY + 'plugins';
     }
 
     /**
@@ -468,7 +454,7 @@ export class CoreSitePluginsProvider {
             plugin.parsedHandlers = CoreTextUtils.parseJSON(
                 plugin.handlers,
                 null,
-                error => this.logger.error('Error parsing site plugin handlers', error),
+                this.logger.error.bind(this.logger, 'Error parsing site plugin handlers'),
             );
         }
 
@@ -673,8 +659,8 @@ export class CoreSitePluginsProvider {
      *
      * @return Promise resolved when site plugins have been fetched.
      */
-    async waitFetchPlugins(): Promise<void> {
-        await this.fetchPluginsDeferred;
+    waitFetchPlugins(): Promise<void> {
+        return this.fetchPluginsDeferred.promise;
     }
 
     /**

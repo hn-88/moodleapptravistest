@@ -22,14 +22,16 @@ import { Observable } from 'rxjs';
 import { timeout } from 'rxjs/operators';
 
 import { CoreNativeToAngularHttpResponse } from '@classes/native-to-angular-http';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreFile, CoreFileFormat } from '@services/file';
 import { CoreMimetypeUtils } from '@services/utils/mimetype';
 import { CoreTextErrorObject, CoreTextUtils } from '@services/utils/text';
+import { CoreUtils, PromiseDefer } from '@services/utils/utils';
 import { CoreConstants } from '@/core/constants';
 import { CoreError } from '@classes/errors/error';
 import { CoreInterceptor } from '@classes/interceptor';
 import { makeSingleton, Translate, FileTransfer, Http, NativeHttp } from '@singletons';
+import { CoreArray } from '@singletons/array';
 import { CoreLogger } from '@singletons/logger';
 import { CoreWSError } from '@classes/errors/wserror';
 import { CoreAjaxError } from '@classes/errors/ajaxerror';
@@ -37,8 +39,6 @@ import { CoreAjaxWSError } from '@classes/errors/ajaxwserror';
 import { CoreNetworkError } from '@classes/errors/network-error';
 import { CoreSite } from '@classes/site';
 import { CoreHttpError } from '@classes/errors/httperror';
-import { CorePromisedValue } from '@classes/promised-value';
-import { CorePlatform } from '@services/platform';
 
 /**
  * This service allows performing WS calls and download/upload files.
@@ -77,12 +77,12 @@ export class CoreWSProvider {
             siteUrl,
             data,
             preSets,
-            deferred: new CorePromisedValue<T>(),
+            deferred: CoreUtils.promiseDefer<T>(),
         };
 
         this.retryCalls.push(call);
 
-        return call.deferred;
+        return call.deferred.promise;
     }
 
     /**
@@ -96,7 +96,7 @@ export class CoreWSProvider {
     call<T = unknown>(method: string, data: Record<string, unknown>, preSets: CoreWSPreSets): Promise<T> {
         if (!preSets) {
             throw new CoreError(Translate.instant('core.unexpectederror'));
-        } else if (!CoreNetwork.isOnline()) {
+        } else if (!CoreApp.isOnline()) {
             throw new CoreNetworkError();
         }
 
@@ -254,7 +254,7 @@ export class CoreWSProvider {
     ): Promise<CoreWSDownloadedFileEntry> {
         this.logger.debug('Downloading file', url, path, addExtension);
 
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             throw new CoreNetworkError();
         }
 
@@ -282,7 +282,7 @@ export class CoreWSProvider {
                 extension = CoreMimetypeUtils.getFileExtension(path) || '';
 
                 // Google Drive extensions will be considered invalid since Moodle usually converts them.
-                if (!extension || ['gdoc', 'gsheet', 'gslides', 'gdraw', 'php'].includes(extension)) {
+                if (!extension || CoreArray.contains(['gdoc', 'gsheet', 'gslides', 'gdraw', 'php'], extension)) {
                     // Not valid, get the file's mimetype.
                     const mimetype = await this.getRemoteFileMimeType(url);
 
@@ -388,7 +388,7 @@ export class CoreWSProvider {
      * @return Timeout in ms.
      */
     getRequestTimeout(): number {
-        return CoreNetwork.isNetworkAccessLimited() ? CoreConstants.WS_TIMEOUT : CoreConstants.WS_TIMEOUT_WIFI;
+        return CoreApp.isNetworkAccessLimited() ? CoreConstants.WS_TIMEOUT : CoreConstants.WS_TIMEOUT_WIFI;
     }
 
     /**
@@ -421,7 +421,7 @@ export class CoreWSProvider {
 
         if (preSets.siteUrl === undefined) {
             throw new CoreAjaxError(Translate.instant('core.unexpectederror'));
-        } else if (!CoreNetwork.isOnline()) {
+        } else if (!CoreApp.isOnline()) {
             throw new CoreAjaxError(Translate.instant('core.networkerrormsg'));
         }
 
@@ -789,7 +789,7 @@ export class CoreWSProvider {
     syncCall<T = unknown>(method: string, data: any, preSets: CoreWSPreSets): T {
         if (!preSets) {
             throw new CoreError(Translate.instant('core.unexpectederror'));
-        } else if (!CoreNetwork.isOnline()) {
+        } else if (!CoreApp.isOnline()) {
             throw new CoreNetworkError();
         }
 
@@ -873,7 +873,7 @@ export class CoreWSProvider {
             throw new CoreError('Invalid options passed to upload file.');
         }
 
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             throw new CoreNetworkError();
         }
 
@@ -908,7 +908,7 @@ export class CoreWSProvider {
         const data = CoreTextUtils.parseJSON<any>(
             success.response,
             null,
-            error => this.logger.error('Error parsing response from upload', success.response, error),
+            this.logger.error.bind(this.logger, 'Error parsing response from upload', success.response),
         );
 
         if (data === null) {
@@ -995,7 +995,7 @@ export class CoreWSProvider {
         options.responseType = options.responseType || 'json';
         options.timeout = options.timeout === undefined ? this.getRequestTimeout() : options.timeout;
 
-        if (CorePlatform.isMobile()) {
+        if (CoreApp.isMobile()) {
             // Use the cordova plugin.
             if (url.indexOf('file://') === 0) {
                 // We cannot load local files using the http native plugin. Use file provider instead.
@@ -1364,7 +1364,7 @@ type RetryCall = {
     siteUrl: string;
     data: Record<string, unknown>;
     preSets: CoreWSPreSets;
-    deferred: CorePromisedValue;
+    deferred: PromiseDefer<unknown>;
 };
 
 /**

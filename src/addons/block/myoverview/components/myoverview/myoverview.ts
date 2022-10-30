@@ -12,17 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Component, OnInit, OnDestroy, Optional, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CoreEventObserver, CoreEvents } from '@singletons/events';
 import { CoreTimeUtils } from '@services/utils/time';
 import { CoreSites, CoreSitesReadingStrategy } from '@services/sites';
-import {
-    CoreCoursesProvider,
-    CoreCourses,
-    CoreCoursesMyCoursesUpdatedEventData,
-    CoreCourseSummaryData,
-} from '@features/courses/services/courses';
-import { CoreCoursesHelper, CoreEnrolledCourseDataWithExtraInfoAndOptions } from '@features/courses/services/courses-helper';
+import { CoreCoursesProvider, CoreCourses, CoreCoursesMyCoursesUpdatedEventData } from '@features/courses/services/courses';
+import { CoreCoursesHelper, CoreEnrolledCourseDataWithOptions } from '@features/courses/services/courses-helper';
 import { CoreCourseHelper, CorePrefetchStatusInfo } from '@features/course/services/course-helper';
 import { CoreCourseOptionsDelegate } from '@features/course/services/course-options-delegate';
 import { CoreBlockBaseComponent } from '@features/block/classes/base-block-component';
@@ -31,10 +26,8 @@ import { CoreUtils } from '@services/utils/utils';
 import { CoreDomUtils } from '@services/utils/dom';
 import { CoreTextUtils } from '@services/utils/text';
 import { AddonCourseCompletion } from '@addons/coursecompletion/services/coursecompletion';
-import { IonRefresher, IonSearchbar } from '@ionic/angular';
+import { IonSearchbar } from '@ionic/angular';
 import { CoreNavigator } from '@services/navigator';
-import { PageLoadWatcher } from '@classes/page-load-watcher';
-import { PageLoadsManager } from '@classes/page-loads-manager';
 
 const FILTER_PRIORITY: AddonBlockMyOverviewTimeFilters[] =
     ['all', 'inprogress', 'future', 'past', 'favourite', 'allincludinghidden', 'hidden'];
@@ -47,9 +40,9 @@ const FILTER_PRIORITY: AddonBlockMyOverviewTimeFilters[] =
     templateUrl: 'addon-block-myoverview.html',
     styleUrls: ['myoverview.scss'],
 })
-export class AddonBlockMyOverviewComponent extends CoreBlockBaseComponent implements OnInit, OnDestroy, OnChanges {
+export class AddonBlockMyOverviewComponent extends CoreBlockBaseComponent implements OnInit, OnDestroy {
 
-    filteredCourses: CoreEnrolledCourseDataWithExtraInfoAndOptions[] = [];
+    filteredCourses: CoreEnrolledCourseDataWithOptions[] = [];
 
     prefetchCoursesData: CorePrefetchStatusInfo = {
         icon: '',
@@ -91,9 +84,8 @@ export class AddonBlockMyOverviewComponent extends CoreBlockBaseComponent implem
     searchEnabled = false;
 
     protected currentSite!: CoreSite;
-    protected allCourses: CoreEnrolledCourseDataWithExtraInfoAndOptions[] = [];
+    protected allCourses: CoreEnrolledCourseDataWithOptions[] = [];
     protected prefetchIconsInitialized = false;
-    protected isDirty = false;
     protected isDestroyed = false;
     protected coursesObserver?: CoreEventObserver;
     protected updateSiteObserver?: CoreEventObserver;
@@ -101,21 +93,15 @@ export class AddonBlockMyOverviewComponent extends CoreBlockBaseComponent implem
     protected gradePeriodAfter = 0;
     protected gradePeriodBefore = 0;
     protected today = 0;
-    protected firstLoadWatcher?: PageLoadWatcher;
-    protected loadsManager: PageLoadsManager;
 
-    constructor(@Optional() loadsManager?: PageLoadsManager) {
+    constructor() {
         super('AddonBlockMyOverviewComponent');
-
-        this.loadsManager = loadsManager ?? new PageLoadsManager();
     }
 
     /**
      * @inheritdoc
      */
     async ngOnInit(): Promise<void> {
-        this.firstLoadWatcher = this.loadsManager.startComponentLoad(this);
-
         // Refresh the enabled flags if enabled.
         this.downloadCourseEnabled = !CoreCourses.isDownloadCourseDisabledInSite();
         this.downloadCoursesEnabled = !CoreCourses.isDownloadCoursesDisabledInSite();
@@ -175,34 +161,7 @@ export class AddonBlockMyOverviewComponent extends CoreBlockBaseComponent implem
     /**
      * @inheritdoc
      */
-    ngOnChanges(changes: SimpleChanges): void {
-        if (this.loaded && changes.block) {
-            // Block was re-fetched, load content.
-            this.reloadContent();
-        }
-    }
-
-    /**
-     * Refresh the data.
-     *
-     * @param refresher Refresher.
-     * @param done Function to call when done.
-     * @return Promise resolved when done.
-     */
-    async doRefresh(refresher?: IonRefresher, done?: () => void): Promise<void> {
-        if (this.loaded) {
-            return this.refreshContent().finally(() => {
-                refresher?.complete();
-                done && done();
-            });
-        }
-    }
-
-    /**
-     * @inheritdoc
-     */
-    async invalidateContent(): Promise<void> {
-        this.isDirty = true;
+    protected async invalidateContent(): Promise<void> {
         const courseIds = this.allCourses.map((course) => course.id);
 
         await this.invalidateCourses(courseIds);
@@ -248,67 +207,34 @@ export class AddonBlockMyOverviewComponent extends CoreBlockBaseComponent implem
     /**
      * @inheritdoc
      */
-    protected async fetchContent(): Promise<void> {
-        const loadWatcher = this.firstLoadWatcher ?? this.loadsManager.startComponentLoad(this);
-        this.firstLoadWatcher = undefined;
+    protected async fetchContent(refresh?: boolean): Promise<void> {
+        const config = this.block.configsRecord;
 
-        await Promise.all([
-            this.loadAllCourses(loadWatcher),
-            this.loadGracePeriod(loadWatcher),
-        ]);
+        const showCategories = config?.displaycategories?.value == '1';
 
-        this.loadSort();
-        this.loadLayouts(this.block.configsRecord?.layouts?.value.split(','));
-
-        await this.loadFilters(this.block.configsRecord, loadWatcher);
-
-        this.isDirty = false;
-    }
-
-    /**
-     * Load all courses.
-     *
-     * @param loadWatcher To manage the requests.
-     * @return Promise resolved when done.
-     */
-    protected async loadAllCourses(loadWatcher: PageLoadWatcher): Promise<void> {
-        const showCategories = this.block.configsRecord?.displaycategories?.value === '1';
-
-        this.allCourses = await loadWatcher.watchRequest(
-            CoreCoursesHelper.getUserCoursesWithOptionsObservable({
-                sort: this.sort.selected,
-                loadCategoryNames: showCategories,
-                readingStrategy: this.isDirty ? CoreSitesReadingStrategy.PREFER_NETWORK : loadWatcher.getReadingStrategy(),
-            }),
-            (prevCourses, newCourses) => this.coursesHaveMeaningfulChanges(prevCourses, newCourses),
+        this.allCourses = await CoreCoursesHelper.getUserCoursesWithOptions(
+            this.sort.selected,
+            undefined,
+            undefined,
+            showCategories,
+            {
+                readingStrategy: refresh ? CoreSitesReadingStrategy.PREFER_NETWORK : undefined,
+            },
         );
 
         this.hasCourses = this.allCourses.length > 0;
-    }
-
-    /**
-     * Load grace period.
-     *
-     * @param loadWatcher To manage the requests.
-     * @return Promise resolved when done.
-     */
-    protected async loadGracePeriod(loadWatcher: PageLoadWatcher): Promise<void> {
-        this.hasCourses = this.allCourses.length > 0;
 
         try {
-            const siteConfig = await loadWatcher.watchRequest(
-                this.currentSite.getConfigObservable(
-                    undefined,
-                    this.isDirty ? CoreSitesReadingStrategy.PREFER_NETWORK : loadWatcher.getReadingStrategy(),
-                ),
-            );
-
-            this.gradePeriodAfter = parseInt(siteConfig.coursegraceperiodafter, 10);
-            this.gradePeriodBefore = parseInt(siteConfig.coursegraceperiodbefore, 10);
+            this.gradePeriodAfter = parseInt(await this.currentSite.getConfig('coursegraceperiodafter', refresh), 10);
+            this.gradePeriodBefore = parseInt(await this.currentSite.getConfig('coursegraceperiodbefore', refresh), 10);
         } catch {
             this.gradePeriodAfter = 0;
             this.gradePeriodBefore = 0;
         }
+
+        this.loadSort();
+        this.loadLayouts(config?.layouts?.value.split(','));
+        this.loadFilters(config);
     }
 
     /**
@@ -333,13 +259,10 @@ export class AddonBlockMyOverviewComponent extends CoreBlockBaseComponent implem
      * Load filters.
      *
      * @param config Block configuration.
-     * @param loadWatcher To manage the requests.
-     * @return Promise resolved when done.
      */
-    protected async loadFilters(
+    protected loadFilters(
         config?: Record<string, { name: string; value: string; type: string }>,
-        loadWatcher?: PageLoadWatcher,
-    ): Promise<void> {
+    ): void {
         if (!this.hasCourses) {
             return;
         }
@@ -377,7 +300,7 @@ export class AddonBlockMyOverviewComponent extends CoreBlockBaseComponent implem
             this.saveFilters('all');
         }
 
-        await this.filterCourses(loadWatcher);
+        this.filterCourses();
     }
 
     /**
@@ -426,14 +349,14 @@ export class AddonBlockMyOverviewComponent extends CoreBlockBaseComponent implem
     protected async refreshCourseList(data: CoreCoursesMyCoursesUpdatedEventData): Promise<void> {
         if (data.action == CoreCoursesProvider.ACTION_ENROL) {
             // Always update if user enrolled in a course.
-            return this.refreshContent(true);
+            return await this.refreshContent();
         }
 
         const course = this.allCourses.find((course) => course.id == data.courseId);
         if (data.action == CoreCoursesProvider.ACTION_STATE_CHANGED) {
             if (!course) {
                 // Not found, use WS update.
-                return this.refreshContent(true);
+                return await this.refreshContent();
             }
 
             if (data.state == CoreCoursesProvider.STATE_FAVOURITE) {
@@ -451,7 +374,7 @@ export class AddonBlockMyOverviewComponent extends CoreBlockBaseComponent implem
         if (data.action == CoreCoursesProvider.ACTION_VIEW && data.courseId != CoreSites.getCurrentSiteHomeId()) {
             if (!course) {
                 // Not found, use WS update.
-                return this.refreshContent(true);
+                return await this.refreshContent();
             }
 
             course.lastaccess = CoreTimeUtils.timestamp();
@@ -508,11 +431,8 @@ export class AddonBlockMyOverviewComponent extends CoreBlockBaseComponent implem
 
     /**
      * Set selected courses filter.
-     *
-     * @param loadWatcher To manage the requests.
-     * @return Promise resolved when done.
      */
-    protected async filterCourses(loadWatcher?: PageLoadWatcher): Promise<void> {
+    protected async filterCourses(): Promise<void> {
         let timeFilter = this.filters.timeFilterSelected;
 
         this.filteredCourses = this.allCourses;
@@ -523,36 +443,18 @@ export class AddonBlockMyOverviewComponent extends CoreBlockBaseComponent implem
             const customFilterValue = this.filters.customFilters[timeFilter.substring(7)]?.value;
 
             if (customFilterName !== undefined && customFilterValue !== undefined) {
-                const alreadyLoading = this.loaded === false;
                 this.loaded = false;
-
                 try {
-                    const courses = loadWatcher ?
-                        await loadWatcher.watchRequest(
-                            CoreCourses.getEnrolledCoursesByCustomFieldObservable(customFilterName, customFilterValue, {
-                                readingStrategy: loadWatcher.getReadingStrategy(),
-                            }),
-                            (prevCourses, newCourses) => this.customFilterCoursesHaveMeaningfulChanges(prevCourses, newCourses),
-                        )
-                        :
-                        await CoreCourses.getEnrolledCoursesByCustomField(customFilterName, customFilterValue);
+                    const courses = await CoreCourses.getEnrolledCoursesByCustomField(customFilterName, customFilterValue);
 
                     // Get the courses information from allincludinghidden to get the max info about the course.
                     const courseIds = courses.map((course) => course.id);
 
                     this.filteredCourses = this.filteredCourses.filter((course) => courseIds.includes(course.id));
-                    this.saveFilters(timeFilter);
                 } catch (error) {
-                    if (alreadyLoading) {
-                        throw error; // Pass the error to the caller so it's treated there.
-                    }
-
                     CoreDomUtils.showErrorModalDefault(error, this.fetchContentDefaultError);
                 } finally {
-                    if (!alreadyLoading) {
-                        // Only set loaded to true if there was no other data being loaded.
-                        this.loaded = true;
-                    }
+                    this.loaded = true;
                 }
             }
         } else {
@@ -702,62 +604,6 @@ export class AddonBlockMyOverviewComponent extends CoreBlockBaseComponent implem
      */
     async openSearch(): Promise<void> {
         CoreNavigator.navigateToSitePath('courses/list', { params : { mode: 'search' } });
-    }
-
-    /**
-     * Compare if the WS data has meaningful changes for the user.
-     *
-     * @param previousCourses Previous courses.
-     * @param newCourses New courses.
-     * @return Whether it has meaningful changes.
-     */
-    protected coursesHaveMeaningfulChanges(
-        previousCourses: CoreEnrolledCourseDataWithExtraInfoAndOptions[],
-        newCourses: CoreEnrolledCourseDataWithExtraInfoAndOptions[],
-    ): boolean {
-        if (previousCourses.length !== newCourses.length) {
-            return true;
-        }
-
-        previousCourses = Array.from(previousCourses)
-            .sort((a, b) => a.fullname.toLowerCase().localeCompare(b.fullname.toLowerCase()));
-        newCourses = Array.from(newCourses).sort((a, b) => a.fullname.toLowerCase().localeCompare(b.fullname.toLowerCase()));
-
-        for (let i = 0; i < previousCourses.length; i++) {
-            const prevCourse = previousCourses[i];
-            const newCourse = newCourses[i];
-
-            if (
-                prevCourse.progress !== newCourse.progress ||
-                prevCourse.categoryname !== newCourse.categoryname ||
-                (prevCourse.displayname ?? prevCourse.fullname) !== (newCourse.displayname ?? newCourse.fullname)
-            ) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Compare if the WS data has meaningful changes for the user.
-     *
-     * @param previousCourses Previous courses.
-     * @param newCourses New courses.
-     * @return Whether it has meaningful changes.
-     */
-    protected customFilterCoursesHaveMeaningfulChanges(
-        previousCourses: CoreCourseSummaryData[],
-        newCourses: CoreCourseSummaryData[],
-    ): boolean {
-        if (previousCourses.length !== newCourses.length) {
-            return true;
-        }
-
-        const previousIds = previousCourses.map(course => course.id).sort();
-        const newIds = newCourses.map(course => course.id).sort();
-
-        return previousIds.some((previousId, index) => previousId !== newIds[index]);
     }
 
     /**

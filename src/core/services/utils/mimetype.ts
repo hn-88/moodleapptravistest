@@ -302,12 +302,14 @@ export class CoreMimetypeUtilsProvider {
      */
     guessExtensionFromUrl(fileUrl: string): string | undefined {
         const split = fileUrl.split('.');
-        let extension: string | undefined;
+        let candidate;
+        let extension;
+        let position;
 
         if (split.length > 1) {
-            let candidate = split[split.length - 1].toLowerCase();
+            candidate = split[split.length - 1].toLowerCase();
             // Remove params if any.
-            let position = candidate.indexOf('?');
+            position = candidate.indexOf('?');
             if (position > -1) {
                 candidate = candidate.substring(0, position);
             }
@@ -341,7 +343,7 @@ export class CoreMimetypeUtilsProvider {
      */
     getFileExtension(filename: string): string | undefined {
         const dot = filename.lastIndexOf('.');
-        let ext: string | undefined;
+        let ext;
 
         if (dot > -1) {
             ext = filename.substring(dot + 1).toLowerCase();
@@ -580,10 +582,11 @@ export class CoreMimetypeUtilsProvider {
      */
     removeExtension(path: string): string {
         const position = path.lastIndexOf('.');
+        let extension;
 
         if (position > -1) {
             // Check extension corresponds to a mimetype to know if it's valid.
-            const extension = path.substring(position + 1).toLowerCase();
+            extension = path.substring(position + 1).toLowerCase();
             if (this.getMimeType(extension) !== undefined) {
                 return path.substring(0, position); // Remove extension.
             }

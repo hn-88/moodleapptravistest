@@ -16,7 +16,6 @@ import { Injectable } from '@angular/core';
 import { Md5 } from 'ts-md5/dist/md5';
 
 import { CoreApp } from '@services/app';
-import { CoreNetwork } from '@services/network';
 import { CoreEventPackageStatusChanged, CoreEvents } from '@singletons/events';
 import { CoreFile } from '@services/file';
 import { CorePluginFileDelegate } from '@services/plugin-file-delegate';
@@ -27,11 +26,11 @@ import { CoreMimetypeUtils } from '@services/utils/mimetype';
 import { CoreTextUtils } from '@services/utils/text';
 import { CoreTimeUtils } from '@services/utils/time';
 import { CoreUrlUtils } from '@services/utils/url';
-import { CoreUtils, CoreUtilsOpenFileOptions } from '@services/utils/utils';
+import { CoreUtils, CoreUtilsOpenFileOptions, PromiseDefer } from '@services/utils/utils';
 import { SQLiteDB } from '@classes/sqlitedb';
 import { CoreError } from '@classes/errors/error';
 import { CoreConstants } from '@/core/constants';
-import { ApplicationInit, makeSingleton, NgZone, Translate } from '@singletons';
+import { ApplicationInit, makeSingleton, Network, NgZone, Translate } from '@singletons';
 import { CoreLogger } from '@singletons/logger';
 import {
     APP_SCHEMA,
@@ -54,7 +53,6 @@ import { CoreDatabaseCachingStrategy, CoreDatabaseTableProxy } from '@classes/da
 import { lazyMap, LazyMap } from '../utils/lazy-map';
 import { asyncInstance, AsyncInstance } from '../utils/async-instance';
 import { CoreText } from '@singletons/text';
-import { CorePromisedValue } from '@classes/promised-value';
 
 /*
  * Factory for handling downloading files and retrieve downloaded files.
@@ -96,7 +94,7 @@ export class CoreFilepoolProvider {
     ];
 
     // To handle file downloads using the queue.
-    protected queueDeferreds: { [s: string]: { [s: string]: CoreFilepoolPromisedValue } } = {};
+    protected queueDeferreds: { [s: string]: { [s: string]: CoreFilepoolPromiseDefer } } = {};
     protected sizeCache: {[fileUrl: string]: number} = {}; // A "cache" to store file sizes.
     // Variables to prevent downloading packages/files twice at the same time.
     protected packagesPromises: { [s: string]: { [s: string]: Promise<void> } } = {};
@@ -150,7 +148,7 @@ export class CoreFilepoolProvider {
             this.checkQueueProcessing();
 
             // Start queue when device goes online.
-            CoreNetwork.onConnect().subscribe(() => {
+            Network.onConnect().subscribe(() => {
                 // Execute the callback in the Angular zone, so change detection doesn't stop working.
                 NgZone.run(() => this.checkQueueProcessing());
             });
@@ -452,7 +450,7 @@ export class CoreFilepoolProvider {
         this.logger.debug(`File ${fileId} already in queue and does not require update`);
         if (queueDeferred) {
             // If we were able to retrieve the queue deferred before, we use that one.
-            return queueDeferred;
+            return queueDeferred.promise;
         } else {
             // Create a new deferred and return its promise.
             return this.getQueuePromise(siteId, fileId, true, onProgress);
@@ -507,7 +505,7 @@ export class CoreFilepoolProvider {
         if (this.sizeCache[fileUrl] !== undefined) {
             size = this.sizeCache[fileUrl];
         } else {
-            if (!CoreNetwork.isOnline()) {
+            if (!CoreApp.isOnline()) {
                 // Cannot check size in offline, stop.
                 throw new CoreError(Translate.instant('core.cannotconnect'));
             }
@@ -516,7 +514,7 @@ export class CoreFilepoolProvider {
         }
 
         // Calculate the size of the file.
-        const isWifi = CoreNetwork.isWifi();
+        const isWifi = CoreApp.isWifi();
         const sizeUnknown = size <= 0;
 
         if (!sizeUnknown) {
@@ -551,7 +549,7 @@ export class CoreFilepoolProvider {
      * is not accessible. Also, this will have no effect if the queue is already running.
      */
     protected checkQueueProcessing(): void {
-        if (!CoreFile.isAvailable() || !CoreNetwork.isOnline()) {
+        if (!CoreFile.isAvailable() || !CoreApp.isOnline()) {
             this.queueState = CoreFilepoolProvider.QUEUE_PAUSED;
 
             return;
@@ -1054,7 +1052,7 @@ export class CoreFilepoolProvider {
 
             if (!fileObject ||
                 this.isFileOutdated(fileObject, options.revision, options.timemodified) &&
-                CoreNetwork.isOnline() &&
+                CoreApp.isOnline() &&
                 !ignoreStale
             ) {
                 throw new CoreError('Needs to be downloaded');
@@ -1467,7 +1465,7 @@ export class CoreFilepoolProvider {
                 const fileSize = await CoreFile.getFileSize(file.path);
 
                 size += fileSize;
-            } catch {
+            } catch (error) {
                 // Ignore failures, maybe some file was deleted.
             }
         }));
@@ -1598,7 +1596,7 @@ export class CoreFilepoolProvider {
                 throw new CoreError('File not downloaded.');
             }
 
-            if (this.isFileOutdated(entry, revision, timemodified) && CoreNetwork.isOnline()) {
+            if (this.isFileOutdated(entry, revision, timemodified) && CoreApp.isOnline()) {
                 throw new CoreError('File is outdated');
             }
         } catch (error) {
@@ -1891,7 +1889,7 @@ export class CoreFilepoolProvider {
         fileId: string,
         create: boolean = true,
         onProgress?: CoreFilepoolOnProgressCallback,
-    ): CoreFilepoolPromisedValue | undefined {
+    ): CoreFilepoolPromiseDefer | undefined {
         if (!this.queueDeferreds[siteId]) {
             if (!create) {
                 return;
@@ -1902,7 +1900,7 @@ export class CoreFilepoolProvider {
             if (!create) {
                 return;
             }
-            this.queueDeferreds[siteId][fileId] = new CorePromisedValue();
+            this.queueDeferreds[siteId][fileId] = CoreUtils.promiseDefer();
         }
 
         if (onProgress) {
@@ -1940,7 +1938,9 @@ export class CoreFilepoolProvider {
         create: boolean = true,
         onProgress?: CoreFilepoolOnProgressCallback,
     ): Promise<void> | undefined {
-        return this.getQueueDeferred(siteId, fileId, create, onProgress);
+        const deferred = this.getQueueDeferred(siteId, fileId, create, onProgress);
+
+        return deferred?.promise;
     }
 
     /**
@@ -2498,7 +2498,7 @@ export class CoreFilepoolProvider {
             if (this.queueState !== CoreFilepoolProvider.QUEUE_RUNNING) {
                 // Silently ignore, the queue is on pause.
                 throw CoreFilepoolProvider.ERR_QUEUE_ON_PAUSE;
-            } else if (!CoreFile.isAvailable() || !CoreNetwork.isOnline()) {
+            } else if (!CoreFile.isAvailable() || !CoreApp.isOnline()) {
                 throw CoreFilepoolProvider.ERR_FS_OR_NETWORK_UNAVAILABLE;
             }
 
@@ -2818,7 +2818,7 @@ export class CoreFilepoolProvider {
      */
     shouldDownload(size: number): boolean {
         return size <= CoreFilepoolProvider.DOWNLOAD_THRESHOLD ||
-            (CoreNetwork.isWifi() && size <= CoreFilepoolProvider.WIFI_DOWNLOAD_THRESHOLD);
+            (CoreApp.isWifi() && size <= CoreFilepoolProvider.WIFI_DOWNLOAD_THRESHOLD);
     }
 
     /**
@@ -3032,11 +3032,11 @@ export class CoreFilepoolProvider {
      * @param error String identifier for error message, if rejected.
      */
     protected treatQueueDeferred(siteId: string, fileId: string, resolve: boolean, error?: string): void {
-        if (siteId in this.queueDeferreds && fileId in this.queueDeferreds[siteId]) {
+        if (this.queueDeferreds[siteId] && this.queueDeferreds[siteId][fileId]) {
             if (resolve) {
                 this.queueDeferreds[siteId][fileId].resolve();
             } else {
-                this.queueDeferreds[siteId][fileId].reject(new Error(error));
+                this.queueDeferreds[siteId][fileId].reject(error);
             }
             delete this.queueDeferreds[siteId][fileId];
         }
@@ -3138,7 +3138,7 @@ export type CoreFilepoolOnProgressCallback<T = unknown> = (event: T) => void;
 /**
  * Deferred promise for file pool. It's similar to the result of $q.defer() in AngularJS.
  */
-type CoreFilepoolPromisedValue = CorePromisedValue<void> & {
+type CoreFilepoolPromiseDefer = PromiseDefer<void> & {
     onProgress?: CoreFilepoolOnProgressCallback; // On Progress function.
 };
 

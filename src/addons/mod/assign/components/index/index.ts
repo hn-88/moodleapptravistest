@@ -389,7 +389,7 @@ export class AddonModAssignIndexComponent extends CoreCourseModuleMainActivityCo
             return;
         }
 
-        return AddonModAssignSync.syncAssign(this.assign.id);
+        return await AddonModAssignSync.syncAssign(this.assign.id);
     }
 
     /**

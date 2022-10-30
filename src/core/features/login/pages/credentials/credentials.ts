@@ -18,7 +18,6 @@ import { Subscription } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 
 import { CoreApp } from '@services/app';
-import { CoreNetwork } from '@services/network';
 import { CoreSites } from '@services/sites';
 import { CoreDomUtils } from '@services/utils/dom';
 import { CoreLoginHelper } from '@features/login/services/login-helper';
@@ -245,7 +244,7 @@ export class CoreLoginCredentialsPage implements OnInit, OnDestroy {
             return;
         }
 
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             CoreDomUtils.showErrorModal('core.networkerrormsg', true);
 
             return;

@@ -79,7 +79,7 @@ export class AddonBlockRecentlyAccessedCoursesComponent extends CoreBlockBaseCom
     /**
      * @inheritdoc
      */
-    async invalidateContent(): Promise<void> {
+    protected async invalidateContent(): Promise<void> {
         const courseIds = this.courses.map((course) => course.id);
 
         await this.invalidateCourses(courseIds);
@@ -171,7 +171,7 @@ export class AddonBlockRecentlyAccessedCoursesComponent extends CoreBlockBaseCom
     protected async refreshCourseList(data: CoreCoursesMyCoursesUpdatedEventData): Promise<void> {
         if (data.action == CoreCoursesProvider.ACTION_ENROL) {
             // Always update if user enrolled in a course.
-            return this.refreshContent();
+            return await this.refreshContent();
         }
 
         const courseIndex = this.courses.findIndex((course) => course.id == data.courseId);
@@ -179,7 +179,7 @@ export class AddonBlockRecentlyAccessedCoursesComponent extends CoreBlockBaseCom
         if (data.action == CoreCoursesProvider.ACTION_VIEW && data.courseId != CoreSites.getCurrentSiteHomeId()) {
             if (!course) {
                 // Not found, use WS update.
-                return this.refreshContent();
+                return await this.refreshContent();
             }
 
             // Place at the begining.

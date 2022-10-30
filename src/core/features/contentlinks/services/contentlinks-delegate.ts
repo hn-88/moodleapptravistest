@@ -19,7 +19,6 @@ import { CoreUrlUtils } from '@services/utils/url';
 import { CoreUtils } from '@services/utils/utils';
 import { makeSingleton } from '@singletons';
 import { CoreText } from '@singletons/text';
-import { CoreUrl } from '@singletons/url';
 
 /**
  * Interface that all handlers must implement.
@@ -175,12 +174,12 @@ export class CoreContentLinksDelegateService {
         const linkActions: CoreContentLinksHandlerActions[] = [];
         const promises: Promise<void>[] = [];
         const params = CoreUrlUtils.extractUrlParams(url);
-        const relativeUrl = CoreText.addStartingSlash(CoreUrl.toRelativeURL(site.getURL(), url));
+        const relativeUrl = CoreText.addStartingSlash(url.replace(site.getURL(), ''));
 
         for (const name in this.handlers) {
             const handler = this.handlers[name];
             const checkAll = handler.checkAllUsers;
-            const isEnabledFn = (siteId: string) => this.isHandlerEnabled(handler, relativeUrl, params, courseId, siteId);
+            const isEnabledFn = this.isHandlerEnabled.bind(this, handler, relativeUrl, params, courseId);
 
             if (!handler.handles(relativeUrl)) {
                 // Invalid handler or it doesn't handle the URL. Stop.
@@ -283,7 +282,7 @@ export class CoreContentLinksDelegateService {
         handler: CoreContentLinksHandler,
         url: string,
         params: Record<string, string>,
-        courseId: number | undefined,
+        courseId: number,
         siteId: string,
     ): Promise<boolean> {
 
@@ -302,7 +301,7 @@ export class CoreContentLinksDelegateService {
             return true;
         }
 
-        return handler.isEnabled(siteId, url, params, courseId);
+        return await handler.isEnabled(siteId, url, params, courseId);
     }
 
     /**

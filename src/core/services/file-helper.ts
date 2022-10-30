@@ -16,7 +16,6 @@ import { Injectable } from '@angular/core';
 import { FileEntry } from '@ionic-native/file/ngx';
 
 import { CoreApp } from '@services/app';
-import { CoreNetwork } from '@services/network';
 import { CoreFile } from '@services/file';
 import { CoreFilepool } from '@services/filepool';
 import { CoreSites } from '@services/sites';
@@ -28,8 +27,7 @@ import { CoreConstants } from '@/core/constants';
 import { CoreError } from '@classes/errors/error';
 import { makeSingleton, Translate } from '@singletons';
 import { CoreNetworkError } from '@classes/errors/network-error';
-import { CoreConfig } from './config';
-import { CoreCanceledError } from '@classes/errors/cancelederror';
+import { CoreMimetypeUtils } from './utils/mimetype';
 
 /**
  * Provider to provide some helper functions regarding files and packages.
@@ -73,7 +71,7 @@ export class CoreFileHelperProvider {
         const timemodified = this.getFileTimemodified(file);
 
         if (!this.isOpenableInApp(file)) {
-            await this.showConfirmOpenUnsupportedFile(false, file);
+            await this.showConfirmOpenUnsupportedFile();
         }
 
         let url = await this.downloadFileIfNeeded(
@@ -170,8 +168,8 @@ export class CoreFileHelperProvider {
         }
 
         // The file system is available.
-        const isWifi = CoreNetwork.isWifi();
-        const isOnline = CoreNetwork.isOnline();
+        const isWifi = CoreApp.isWifi();
+        const isOnline = CoreApp.isOnline();
 
         if (state == CoreConstants.DOWNLOADED) {
             // File is downloaded, get the local file URL.
@@ -306,18 +304,22 @@ export class CoreFileHelperProvider {
     }
 
     /**
-     * Whether the file has to be opened in browser (external repository).
-     * The file must have a mimetype attribute.
+     * Whether the file has to be opened in browser.
      *
      * @param file The file to check.
      * @return Whether the file should be opened in browser.
      */
     shouldOpenInBrowser(file: CoreWSFile): boolean {
-        if (!file || !('isexternalfile' in file) || !file.isexternalfile || !file.mimetype) {
+        if (!file.mimetype) {
             return false;
         }
 
         const mimetype = file.mimetype;
+        if (!('isexternalfile' in file) || !file.isexternalfile) {
+            return mimetype === 'application/vnd.android.package-archive' ||
+                CoreMimetypeUtils.getFileExtension(file.filename ?? '') === 'apk';
+        }
+
         if (mimetype.indexOf('application/vnd.google-apps.') != -1) {
             // Google Docs file, always open in browser.
             return true;
@@ -415,42 +417,13 @@ export class CoreFileHelperProvider {
      * Show a confirm asking the user if we wants to open the file.
      *
      * @param onlyDownload Whether the user is only downloading the file, not opening it.
-     * @param file The file that will be opened.
      * @return Promise resolved if confirmed, rejected otherwise.
      */
-    async showConfirmOpenUnsupportedFile(onlyDownload = false, file: {filename?: string; name?: string}): Promise<void> {
-        file = file || {}; // Just in case some plugin doesn't pass it. This can be removed in the future, @since app 4.1.
-
-        // Check if the user decided not to see the warning.
-        const regex = /(?:\.([^.]+))?$/;
-        const regexResult = regex.exec(file.filename || file.name || '');
-
-        const configKey = 'CoreFileUnsupportedWarningDisabled-' + (regexResult?.[1] ?? 'unknown');
-        const dontShowWarning = await CoreConfig.get(configKey, 0);
-        if (dontShowWarning) {
-            return;
-        }
-
+    showConfirmOpenUnsupportedFile(onlyDownload?: boolean): Promise<void> {
         const message = Translate.instant('core.cannotopeninapp' + (onlyDownload ? 'download' : ''));
         const okButton = Translate.instant(onlyDownload ? 'core.downloadfile' : 'core.openfile');
 
-        try {
-            const dontShowAgain = await CoreDomUtils.showPrompt(
-                message,
-                undefined,
-                Translate.instant('core.dontshowagain'),
-                'checkbox',
-                { okText: okButton },
-                { cssClass: 'core-modal-force-on-top' },
-            );
-
-            if (dontShowAgain) {
-                CoreConfig.set(configKey, 1);
-            }
-        } catch {
-            // User canceled.
-            throw new CoreCanceledError('');
-        }
+        return CoreDomUtils.showConfirm(message, undefined, okButton, undefined, { cssClass: 'core-modal-force-on-top' });
     }
 
     /**

@@ -19,7 +19,6 @@ import { CoreSite, CoreSiteWSPreSets } from '@classes/site';
 import { CoreCourseCommonModWSOptions } from '@features/course/services/course';
 import { CoreCourseLogHelper } from '@features/course/services/log-helper';
 import { CoreSites, CoreSitesCommonWSOptions } from '@services/sites';
-import { CoreUtils } from '@services/utils/utils';
 import { CoreWSExternalFile, CoreWSExternalWarning } from '@services/ws';
 import { makeSingleton, Translate } from '@singletons';
 
@@ -152,8 +151,8 @@ export class AddonModBBBService {
     async getMeetingInfo(
         id: number,
         groupId: number = 0,
-        options: AddonModBBBGetMeetingInfoOptions = {},
-    ): Promise<AddonModBBBMeetingInfo> {
+        options: CoreCourseCommonModWSOptions = {},
+    ): Promise<AddonModBBBMeetingInfoWSResponse> {
         const site = await CoreSites.getSite(options.siteId);
 
         const params: AddonModBBBMeetingInfoWSParams = {
@@ -162,27 +161,16 @@ export class AddonModBBBService {
         };
         const preSets: CoreSiteWSPreSets = {
             cacheKey: this.getMeetingInfoCacheKey(id, groupId),
-            getCacheUsingCacheKey: true,
-            uniqueCacheKey: true,
             component: AddonModBBBService.COMPONENT,
             componentId: options.cmId,
             ...CoreSites.getReadingStrategyPreSets(options.readingStrategy), // Include reading strategy preSets.
         };
-        if (options.updateCache) {
-            params.updatecache = true;
-            preSets.getFromCache = false;
-        }
 
-        const meetingInfo = await site.read<AddonModBBBMeetingInfoWSResponse>(
+        return await site.read<AddonModBBBMeetingInfoWSResponse>(
             'mod_bigbluebuttonbn_meeting_info',
             params,
             preSets,
         );
-
-        return {
-            ...meetingInfo,
-            features: meetingInfo.features ? CoreUtils.objectToKeyValueMap(meetingInfo.features, 'name', 'isenabled') : undefined,
-        };
     }
 
     /**
@@ -359,17 +347,6 @@ export type AddonModBBBMeetingInfoWSResponse = {
         name: string; // Presentation name.
     }[];
     joinurl: string; // Join URL.
-    features?: { // Enabled features. @since 4.1.
-        name: string;
-        isenabled: boolean;
-    }[];
-};
-
-/**
- * Meeting info with some calculated data.
- */
-export type AddonModBBBMeetingInfo = Omit<AddonModBBBMeetingInfoWSResponse, 'features'> & {
-    features?: Record<string, boolean>;
 };
 
 /**
@@ -402,11 +379,4 @@ export type AddonModBBBViewBigBlueButtonBNWSParams = {
 export type AddonModBBBEndMeetingWSParams = {
     bigbluebuttonbnid: number; // Bigbluebuttonbn instance id.
     groupid?: number; // Bigbluebuttonbn group id.
-};
-
-/**
- * Options for getMeetingInfo.
- */
-export type AddonModBBBGetMeetingInfoOptions = CoreCourseCommonModWSOptions & {
-    updateCache?: boolean;
 };

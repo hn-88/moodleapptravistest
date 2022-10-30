@@ -152,6 +152,6 @@
     }
 }
 
-:host-context(html.dark) {
+:host-context(body.dark) {
     --addon-calendar-blank-day-background-color: var(--gray-900);
 }

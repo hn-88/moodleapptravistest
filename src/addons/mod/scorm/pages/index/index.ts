@@ -14,8 +14,7 @@
 
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { CoreCourseModuleMainActivityPage } from '@features/course/classes/main-activity-page';
-import { CoreNavigator } from '@services/navigator';
-import { AddonModScormAutoPlayData, AddonModScormIndexComponent } from '../../components/index/index';
+import { AddonModScormIndexComponent } from '../../components/index/index';
 
 /**
  * Page that displays the scorm entry page.
@@ -27,23 +26,5 @@ import { AddonModScormAutoPlayData, AddonModScormIndexComponent } from '../../co
 export class AddonModScormIndexPage extends CoreCourseModuleMainActivityPage<AddonModScormIndexComponent> implements OnInit {
 
     @ViewChild(AddonModScormIndexComponent) activityComponent?: AddonModScormIndexComponent;
-
-    autoPlayData?: AddonModScormAutoPlayData; // Data to auto-play the SCORM.
-
-    /**
-     * @inheritdoc
-     */
-    ngOnInit(): void {
-        super.ngOnInit();
-
-        if (CoreNavigator.getRouteBooleanParam('autoPlay')) {
-            this.autoPlayData = {
-                mode: CoreNavigator.getRouteParam('mode'),
-                newAttempt: CoreNavigator.getRouteBooleanParam('newAttempt'),
-                organizationId: CoreNavigator.getRouteParam('organizationId'),
-                scoId: CoreNavigator.getRouteNumberParam('scoId'),
-            };
-        }
-    }
 
 }

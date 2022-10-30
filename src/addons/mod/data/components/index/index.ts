@@ -95,7 +95,7 @@ export class AddonModDataIndexComponent extends CoreCourseModuleMainActivityComp
         database: AddonModDataData;
         title: string;
         group: number;
-        gotoEntry: (entryId: number) => void;
+        gotoEntry: (a: number) => void;
     };
 
     // Data for found records translation.
@@ -103,7 +103,7 @@ export class AddonModDataIndexComponent extends CoreCourseModuleMainActivityComp
         num: number;
         max: number;
         reseturl: string;
-    };
+    };;
 
     hasOfflineRatings = false;
 
@@ -218,7 +218,7 @@ export class AddonModDataIndexComponent extends CoreCourseModuleMainActivityComp
         }
 
         this.groupInfo = await CoreGroups.getActivityGroupInfo(this.database.coursemodule);
-        if (this.groupInfo.visibleGroups && this.groupInfo.groups.length) {
+        if (this.groupInfo.visibleGroups && this.groupInfo.groups?.length) {
             // There is a bug in Moodle with All participants and visible groups (MOBILE-3597). Remove it.
             this.groupInfo.groups = this.groupInfo.groups.filter(group => group.id !== 0);
             this.groupInfo.defaultGroupId = this.groupInfo.groups[0].id;
@@ -372,7 +372,7 @@ export class AddonModDataIndexComponent extends CoreCourseModuleMainActivityComp
                 database: this.database!,
                 title: this.module.name,
                 group: this.selectedGroup,
-                gotoEntry: (entryId) => this.gotoEntry(entryId),
+                gotoEntry: this.gotoEntry.bind(this),
             };
         } else if (!this.search.searching) {
             // Empty and no searching.

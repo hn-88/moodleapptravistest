@@ -56,7 +56,7 @@ export class CoreSitePluginsModuleHandler extends CoreSitePluginsBaseHandler imp
 
         if (initResult?.jsResult && initResult.jsResult.supportsFeature) {
             // The init result defines a function to check if a feature is supported, use it.
-            this.supportsFeature = (feature) => initResult.jsResult.supportsFeature(feature);
+            this.supportsFeature = initResult.jsResult.supportsFeature.bind(initResult.jsResult);
         }
     }
 
@@ -76,7 +76,7 @@ export class CoreSitePluginsModuleHandler extends CoreSitePluginsBaseHandler imp
             module.description = '';
 
             return {
-                icon: CoreCourse.getModuleIconSrc(module.modname, icon),
+                icon: await CoreCourse.getModuleIconSrc(module.modname, icon),
                 title: title || '',
                 a11yTitle: '',
                 class: this.handlerSchema.displaydata?.class,
@@ -87,7 +87,7 @@ export class CoreSitePluginsModuleHandler extends CoreSitePluginsBaseHandler imp
         const showDowloadButton = this.handlerSchema.downloadbutton;
         const handlerData: CoreCourseModuleHandlerData = {
             title: module.name,
-            icon: CoreCourse.getModuleIconSrc(module.modname, icon),
+            icon: await CoreCourse.getModuleIconSrc(module.modname, icon),
             class: this.handlerSchema.displaydata?.class,
             showDownloadButton: showDowloadButton !== undefined ? showDowloadButton : hasOffline,
         };

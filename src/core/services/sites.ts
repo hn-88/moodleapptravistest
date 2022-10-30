@@ -51,7 +51,7 @@ import { CoreRedirectPayload } from './navigator';
 import { CoreSitesFactory } from './sites-factory';
 import { CoreText } from '@singletons/text';
 import { CoreLoginHelper } from '@features/login/services/login-helper';
-import { CoreErrorWithOptions } from '@classes/errors/errorwithtitle';
+import { CoreErrorWithTitle } from '@classes/errors/errorwithtitle';
 import { CoreAjaxError } from '@classes/errors/ajaxerror';
 import { CoreAjaxWSError } from '@classes/errors/ajaxwserror';
 import { CoreSitePlugins } from '@features/siteplugins/services/siteplugins';
@@ -60,7 +60,6 @@ import { CoreDatabaseConfiguration, CoreDatabaseTable } from '@classes/database/
 import { CoreDatabaseCachingStrategy, CoreDatabaseTableProxy } from '@classes/database/database-table-proxy';
 import { asyncInstance, AsyncInstance } from '../utils/async-instance';
 import { CoreConfig } from './config';
-import { CoreNetwork } from '@services/network';
 
 export const CORE_SITE_SCHEMAS = new InjectionToken<CoreSiteSchema[]>('CORE_SITE_SCHEMAS');
 export const CORE_SITE_CURRENT_SITE_ID_CONFIG = 'current_site_id';
@@ -90,9 +89,9 @@ export class CoreSitesProvider {
     protected schemasTables: Record<string, AsyncInstance<CoreDatabaseTable<SchemaVersionsDBEntry, 'name'>>> = {};
     protected sitesTable = asyncInstance<CoreDatabaseTable<SiteDBEntry>>();
 
-    constructor(@Optional() @Inject(CORE_SITE_SCHEMAS) siteSchemas: CoreSiteSchema[][] | null) {
+    constructor(@Optional() @Inject(CORE_SITE_SCHEMAS) siteSchemas: CoreSiteSchema[][] = []) {
         this.logger = CoreLogger.getInstance('CoreSitesProvider');
-        this.siteSchemas = CoreArray.flatten(siteSchemas ?? []).reduce(
+        this.siteSchemas = CoreArray.flatten(siteSchemas).reduce(
             (siteSchemas, schema) => {
                 siteSchemas[schema.name] = schema;
 
@@ -217,7 +216,7 @@ export class CoreSitesProvider {
 
         if (!CoreUrlUtils.isHttpURL(siteUrl)) {
             throw new CoreError(Translate.instant('core.login.invalidsite'));
-        } else if (!CoreNetwork.isOnline()) {
+        } else if (!CoreApp.isOnline()) {
             throw new CoreNetworkError();
         }
 
@@ -430,7 +429,7 @@ export class CoreSitesProvider {
         service?: string,
         retry?: boolean,
     ): Promise<CoreSiteUserTokenResponse> {
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             throw new CoreNetworkError();
         }
 
@@ -870,7 +869,7 @@ export class CoreSitesProvider {
 
         const siteUrlAllowed = await CoreLoginHelper.isSiteUrlAllowed(site.getURL(), false);
         if (!siteUrlAllowed) {
-            throw new CoreErrorWithOptions(Translate.instant('core.login.sitenotallowed'));
+            throw new CoreErrorWithTitle(Translate.instant('core.login.sitenotallowed'));
         }
 
         this.currentSite = site;
@@ -1185,7 +1184,6 @@ export class CoreSitesProvider {
                     siteName: CoreConstants.CONFIG.sitename == '' ? siteInfo?.sitename: CoreConstants.CONFIG.sitename,
                     avatar: siteInfo?.userpictureurl,
                     siteHomeId: siteInfo?.siteid || 1,
-                    loggedOut: !!site.loggedOut,
                 };
                 formattedSites.push(basicInfo);
             }
@@ -1260,7 +1258,7 @@ export class CoreSitesProvider {
     async getSitesInstances(): Promise<CoreSite[]> {
         const siteIds = await this.getSitesIds();
 
-        return Promise.all(siteIds.map(async (siteId) => await this.getSite(siteId)));
+        return await Promise.all(siteIds.map(async (siteId) => await this.getSite(siteId)));
     }
 
     /**
@@ -1278,7 +1276,7 @@ export class CoreSitesProvider {
     /**
      * Logout the user.
      *
-     * @param options Logout options.
+     * @param forceLogout If true, site will be marked as logged out, no matter the value tool_mobile_forcelogout.
      * @return Promise resolved when the user is logged out.
      */
     async logout(options: CoreSitesLogoutOptions = {}): Promise<void> {
@@ -1355,15 +1353,14 @@ export class CoreSitesProvider {
      * Mark a site as logged out so the user needs to authenticate again.
      *
      * @param siteId ID of the site.
-     * @param isLoggedOut True if logged out and needs to authenticate again, false otherwise.
      * @return Promise resolved when done.
      */
-    async setSiteLoggedOut(siteId: string, isLoggedOut: boolean = true): Promise<void> {
+    protected async setSiteLoggedOut(siteId: string): Promise<void> {
         const site = await this.getSite(siteId);
 
-        site.setLoggedOut(isLoggedOut);
+        site.setLoggedOut(true);
 
-        await this.sitesTable.update({ loggedOut: isLoggedOut ? 1 : 0 }, { id: siteId });
+        await this.sitesTable.update({ loggedOut: 1 }, { id: siteId });
     }
 
     /**
@@ -1572,7 +1569,7 @@ export class CoreSitesProvider {
      * @return Promise resolved with config if available.
      */
     protected async getSiteConfig(site: CoreSite): Promise<CoreSiteConfig | undefined> {
-        return site.getConfig(undefined, true);
+        return await site.getConfig(undefined, true);
     }
 
     /**
@@ -1796,12 +1793,6 @@ export class CoreSitesProvider {
                     getFromCache: false,
                     emergencyCache: false,
                 };
-            case CoreSitesReadingStrategy.STALE_WHILE_REVALIDATE:
-                return {
-                    updateInBackground: true,
-                    getFromCache: true,
-                    saveToCache: true,
-                };
             default:
                 return {};
         }
@@ -1930,7 +1921,6 @@ export type CoreSiteBasicInfo = {
     avatar?: string; // User's avatar.
     badge?: number; // Badge to display in the site.
     siteHomeId?: number; // Site home ID.
-    loggedOut: boolean; // If Site is logged out.
 };
 
 /**
@@ -2023,7 +2013,6 @@ export const enum CoreSitesReadingStrategy {
     PREFER_CACHE,
     ONLY_NETWORK,
     PREFER_NETWORK,
-    STALE_WHILE_REVALIDATE,
 }
 
 /**

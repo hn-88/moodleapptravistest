@@ -132,10 +132,6 @@ export class AddonModScormPlayerPage implements OnInit, OnDestroy {
 
     }
 
-    get canSaveTracks(): boolean {
-        return !this.accessInfo || !!this.accessInfo.cansavetrack;
-    }
-
     /**
      * Initialize.
      *
@@ -175,7 +171,7 @@ export class AddonModScormPlayerPage implements OnInit, OnDestroy {
 
             if (this.offline) {
                 // Wait a bit to make sure data is stored.
-                setTimeout(() => this.refreshToc(), 100);
+                setTimeout(this.refreshToc.bind(this), 100);
             } else {
                 this.refreshToc();
             }
@@ -239,13 +235,9 @@ export class AddonModScormPlayerPage implements OnInit, OnDestroy {
      * Determine the attempt to use, the mode (normal/preview) and if it's offline or online.
      *
      * @param attemptsData Attempts count.
-     * @param accessInfo Access info.
      * @return Promise resolved when done.
      */
-    protected async determineAttemptAndMode(
-        attemptsData: AddonModScormAttemptCountResult,
-        accessInfo: AddonModScormGetScormAccessInformationWSResponse,
-    ): Promise<void> {
+    protected async determineAttemptAndMode(attemptsData: AddonModScormAttemptCountResult): Promise<void> {
         const data = await AddonModScormHelper.determineAttemptToContinue(this.scorm, attemptsData);
 
         let incomplete = false;
@@ -265,14 +257,7 @@ export class AddonModScormPlayerPage implements OnInit, OnDestroy {
         }
 
         // Determine mode and attempt to use.
-        const result = AddonModScorm.determineAttemptAndMode(
-            this.scorm,
-            this.mode,
-            this.attempt,
-            this.newAttempt,
-            incomplete,
-            accessInfo.cansavetrack,
-        );
+        const result = AddonModScorm.determineAttemptAndMode(this.scorm, this.mode, this.attempt, this.newAttempt, incomplete);
 
         if (result.attempt > this.attempt) {
             // We're creating a new attempt.
@@ -315,26 +300,23 @@ export class AddonModScormPlayerPage implements OnInit, OnDestroy {
 
         try {
             // Get attempts data.
-            const [attemptsData, accessInfo] = await Promise.all([
-                AddonModScorm.getAttemptCount(this.scorm.id, { cmId: this.cmId }),
-                AddonModScorm.getAccessInformation(this.scorm.id, {
-                    cmId: this.cmId,
-                }),
-            ]);
+            const attemptsData = await AddonModScorm.getAttemptCount(this.scorm.id, { cmId: this.cmId });
 
-            this.accessInfo = accessInfo;
+            await this.determineAttemptAndMode(attemptsData);
 
-            await this.determineAttemptAndMode(attemptsData, accessInfo);
-
-            const [data] = await Promise.all([
+            const [data, accessInfo] = await Promise.all([
                 AddonModScorm.getScormUserData(this.scorm.id, this.attempt, {
                     cmId: this.cmId,
                     offline: this.offline,
+                }),
+                AddonModScorm.getAccessInformation(this.scorm.id, {
+                    cmId: this.cmId,
                 }),
                 this.fetchToc(),
             ]);
 
             this.userData = data;
+            this.accessInfo = accessInfo;
         } catch (error) {
             CoreDomUtils.showErrorModalDefault(error, 'addon.mod_scorm.errorgetscorm', true);
         }
@@ -415,10 +397,9 @@ export class AddonModScormPlayerPage implements OnInit, OnDestroy {
                 this.scorm,
                 sco.id,
                 this.attempt,
-                this.userData ?? {},
+                this.userData!,
                 this.mode,
                 this.offline,
-                this.canSaveTracks,
             );
 
             // Add the model to the window so the SCORM can access it.
@@ -472,10 +453,6 @@ export class AddonModScormPlayerPage implements OnInit, OnDestroy {
      * @return Promise resolved when done.
      */
     protected async markCompleted(sco: AddonModScormScoWithData): Promise<void> {
-        if (!this.canSaveTracks) {
-            return;
-        }
-
         const tracks = [{
             element: 'cmi.core.lesson_status',
             value: 'completed',
@@ -559,10 +536,6 @@ export class AddonModScormPlayerPage implements OnInit, OnDestroy {
      * @return Promise resolved when done.
      */
     protected async setStartTime(scoId: number): Promise<void> {
-        if (!this.canSaveTracks) {
-            return;
-        }
-
         const tracks = [{
             element: 'x.start.time',
             value: String(CoreTimeUtils.timestamp()),

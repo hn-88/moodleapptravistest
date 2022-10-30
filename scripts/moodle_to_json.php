@@ -24,7 +24,6 @@ if (isset($_SERVER['REMOTE_ADDR'])) {
 }
 define('MOODLE_INTERNAL', 1);
 define('LANGPACKSFOLDER', '../../moodle-langpacks');
-define('APPMODULENAME','local_moodlemobileapp');
 define('ASSETSPATH', '../src/assets/lang/');
 define('CONFIG', '../moodle.config.json');
 define('OVERRIDE_LANG_SUFIX', false);
@@ -52,16 +51,16 @@ if (!file_exists(ASSETSPATH)) {
 }
 
 
-load_langindex();
+$keys = get_langindex_keys();
 
-$added_langs = build_languages($languages);
+$added_langs = build_languages($languages, $keys);
 
 if ($forcedetect) {
-    $new_langs = detect_languages($languages);
+    $new_langs = detect_languages($languages, $keys);
 
     if (!empty($new_langs)) {
         echo "\n\n\nThe following languages are going to be added\n\n\n";
-        $added_langs = build_languages($new_langs, $added_langs);
+        $added_langs = build_languages($new_langs, $keys, $added_langs);
     }
 }
 

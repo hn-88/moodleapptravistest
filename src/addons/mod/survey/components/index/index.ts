@@ -205,23 +205,21 @@ export class AddonModSurveyIndexComponent extends CoreCourseModuleMainActivityCo
             if (online && this.isPrefetched()) {
                 // The survey is downloaded, update the data.
                 try {
-                    const prefetched = await AddonModSurveySync.prefetchAfterUpdate(
+                    await AddonModSurveySync.prefetchAfterUpdate(
                         AddonModSurveyPrefetchHandler.instance,
                         this.module,
                         this.courseId,
                     );
 
                     // Update the view.
-                    prefetched ?
-                        this.showLoadingAndFetch(false, false) :
-                        this.showLoadingAndRefresh(false);
+                    this.showLoadingAndFetch(false, false);
                 } catch {
                     // Prefetch failed, refresh the data.
-                    this.showLoadingAndRefresh(false);
+                    await this.showLoadingAndRefresh(false);
                 }
             } else {
                 // Not downloaded, refresh the data.
-                this.showLoadingAndRefresh(false);
+                await this.showLoadingAndRefresh(false);
             }
         } catch (error) {
             CoreDomUtils.showErrorModalDefault(error, 'addon.mod_survey.cannotsubmitsurvey', true);

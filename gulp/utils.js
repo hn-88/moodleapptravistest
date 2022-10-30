@@ -58,23 +58,22 @@ class Utils {
      */
     static getCommandLineArguments() {
 
-        let args = {};
-        let curOpt;
+        let args = {}, opt, thisOpt, curOpt;
+        for (let a = 0; a < process.argv.length; a++) {
 
-        for (const argument of process.argv) {
-            const thisOpt = argument.trim();
-            const option = thisOpt.replace(/^\-+/, '');
+            thisOpt = process.argv[a].trim();
+            opt = thisOpt.replace(/^\-+/, '');
 
-            if (option === thisOpt) {
+            if (opt === thisOpt) {
                 // argument value
                 if (curOpt) {
-                    args[curOpt] = option;
+                    args[curOpt] = opt;
                 }
                 curOpt = null;
             }
             else {
                 // Argument name.
-                curOpt = option;
+                curOpt = opt;
                 args[curOpt] = true;
             }
         }

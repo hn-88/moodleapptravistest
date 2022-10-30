@@ -31,7 +31,7 @@ import { CoreConfig } from '@services/config';
 import { CoreUtils } from '@services/utils/utils';
 import { CoreCourse } from '@features/course/services/course';
 import { ContextLevel, CoreConstants } from '@/core/constants';
-import moment from 'moment-timezone';
+import moment from 'moment';
 import { makeSingleton } from '@singletons';
 import { AddonCalendarSyncInvalidateEvent } from './calendar-sync';
 import { AddonCalendarOfflineEventDBRecord } from './database/calendar-offline';
@@ -64,7 +64,7 @@ export class AddonCalendarHelperProvider {
      * @param eventType Type of the event.
      * @return Event icon.
      */
-    getEventIcon(eventType: AddonCalendarEventType | string): string {
+    getEventIcon(eventType: AddonCalendarEventType): string {
         if (this.eventTypeIcons.length == 0) {
             CoreUtils.enumKeys(AddonCalendarEventType).forEach((name) => {
                 const value = AddonCalendarEventType[name];
@@ -136,8 +136,8 @@ export class AddonCalendarHelperProvider {
         const result = {};
 
         events.forEach((event) => {
-            const treatedDay = moment(event.timestart * 1000);
-            const endDay = moment((event.timestart + event.timeduration) * 1000);
+            const treatedDay = moment(new Date(event.timestart * 1000));
+            const endDay = moment(new Date((event.timestart + event.timeduration) * 1000));
 
             // Add the event to all the days it lasts.
             while (!treatedDay.isAfter(endDay, 'day')) {
@@ -164,9 +164,9 @@ export class AddonCalendarHelperProvider {
      *
      * @param event Event to format.
      */
-    formatEventData(
+    async formatEventData(
         event: AddonCalendarEvent | AddonCalendarEventBase | AddonCalendarGetEventsEvent,
-    ): AddonCalendarEventToDisplay {
+    ): Promise<AddonCalendarEventToDisplay> {
 
         const eventFormatted: AddonCalendarEventToDisplay = {
             ...event,
@@ -178,11 +178,10 @@ export class AddonCalendarHelperProvider {
             format: 1,
             visible: 1,
             offline: false,
-            purpose: 'purpose' in event ? event.purpose : undefined,
         };
 
         if (event.modulename) {
-            eventFormatted.eventIcon = CoreCourse.getModuleIconSrc(event.modulename);
+            eventFormatted.eventIcon = await CoreCourse.getModuleIconSrc(event.modulename);
             eventFormatted.moduleIcon = eventFormatted.eventIcon;
             eventFormatted.iconTitle = CoreCourse.translateModuleName(event.modulename);
         }
@@ -661,8 +660,8 @@ export class AddonCalendarHelperProvider {
             const finalPromises: Promise<unknown>[] =[AddonCalendar.invalidateAllUpcomingEvents()];
 
             // Fetch months and days.
-            fetchTimestarts.forEach((fetchTime) => {
-                const day = moment(fetchTime * 1000);
+            fetchTimestarts.map((fetchTime) => {
+                const day = moment(new Date(fetchTime * 1000));
 
                 const monthId = this.getMonthId(day);
                 if (!treatedMonths[monthId]) {
@@ -697,8 +696,8 @@ export class AddonCalendarHelperProvider {
             });
 
             // Invalidate months and days.
-            invalidateTimestarts.forEach((fetchTime) => {
-                const day = moment(fetchTime * 1000);
+            invalidateTimestarts.map((fetchTime) => {
+                const day = moment(new Date(fetchTime * 1000));
 
                 const monthId = this.getMonthId(day);
                 if (!treatedMonths[monthId]) {

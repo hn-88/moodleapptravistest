@@ -165,7 +165,6 @@ export class AddonNotificationsProvider {
      * @param notifications Current list of loaded notifications. It's used to calculate the offset.
      * @param options Other options.
      * @return Promise resolved with notifications and if can load more.
-     * @deprecated since 4.1. Use getNotificationsWithStatus instead.
      */
     async getNotifications(
         notifications: AddonNotificationsNotificationMessageFormatted[],
@@ -232,7 +231,7 @@ export class AddonNotificationsProvider {
      * @param options Other options.
      * @return Promise resolved with notifications.
      */
-    async getNotificationsWithStatus(
+    protected async getNotificationsWithStatus(
         read: AddonNotificationsGetReadType,
         options: AddonNotificationsGetNotificationsOptions = {},
     ): Promise<AddonNotificationsNotificationMessageFormatted[]> {

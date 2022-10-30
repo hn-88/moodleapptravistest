@@ -29,7 +29,7 @@ import {
 import { CoreDomUtils } from '@services/utils/dom';
 import { CoreUser } from '@features/user/services/user';
 import { CorePushNotificationsDelegate } from '@features/pushnotifications/services/push-delegate';
-import { Translate } from '@singletons';
+import { Platform, Translate } from '@singletons';
 import { Subscription } from 'rxjs';
 import { CorePushNotificationsNotificationBasicData } from '@features/pushnotifications/services/pushnotifications';
 import { ActivatedRoute, Params } from '@angular/router';
@@ -37,7 +37,6 @@ import { CoreUtils } from '@services/utils/utils';
 import { CoreNavigator } from '@services/navigator';
 import { CoreScreen } from '@services/screen';
 import { CoreMainMenuDeepLinkManager } from '@features/mainmenu/classes/deep-link-manager';
-import { CorePlatform } from '@services/platform';
 
 /**
  * Page that displays the list of conversations, including group conversations.
@@ -177,7 +176,7 @@ export class AddonMessagesGroupConversationsPage implements OnInit, OnDestroy {
         );
 
         // Refresh the view when the app is resumed.
-        this.appResumeSubscription = CorePlatform.resume.subscribe(() => {
+        this.appResumeSubscription = Platform.resume.subscribe(() => {
             if (!this.loaded) {
                 return;
             }
@@ -519,12 +518,18 @@ export class AddonMessagesGroupConversationsPage implements OnInit, OnDestroy {
         this.selectedUserId = userId;
 
         const params: Params = {};
+        if (conversationId) {
+            params.conversationId = conversationId;
+        }
+        if (userId) {
+            params.userId = userId;
+        }
         if (messageId) {
             params.message = messageId;
         }
 
-        const path = CoreNavigator.getRelativePathToParent('/messages/group-conversations') + 'discussion/' +
-            (conversationId ? conversationId : `user/${userId}`);
+        const splitViewLoaded = CoreNavigator.isCurrentPathInTablet('**/messages/group-conversations/discussion');
+        const path = (splitViewLoaded ? '../' : '') + 'discussion';
 
         await CoreNavigator.navigate(path, { params });
     }
@@ -533,7 +538,7 @@ export class AddonMessagesGroupConversationsPage implements OnInit, OnDestroy {
      * Navigate to message settings.
      */
     gotoSettings(): void {
-        CoreNavigator.navigateToSitePath('message-settings');
+        CoreNavigator.navigateToSitePath('../message-settings');
     }
 
     /**

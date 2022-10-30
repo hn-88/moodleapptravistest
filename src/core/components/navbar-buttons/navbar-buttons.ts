@@ -208,17 +208,10 @@ export class CoreNavBarButtonsComponent implements OnInit, OnDestroy {
                 await content.componentOnReady();
             }
 
-            parentPage = parentPage.parentElement.closest('.ion-page, .ion-page-hidden, .ion-page-invisible');
+            parentPage = parentPage.parentElement.closest('.ion-page');
 
             // Check if the page has a header. If it doesn't, search the next parent page.
-            let header  = parentPage?.querySelector<HTMLIonHeaderElement>(':scope > ion-header');
-
-            if (header && getComputedStyle(header).display !== 'none') {
-                return header;
-            }
-
-            // Find using content if any.
-            header = content?.parentElement?.querySelector<HTMLIonHeaderElement>(':scope > ion-header');
+            const header  = parentPage?.querySelector<HTMLIonHeaderElement>(':scope > ion-header');
 
             if (header && getComputedStyle(header).display !== 'none') {
                 return header;

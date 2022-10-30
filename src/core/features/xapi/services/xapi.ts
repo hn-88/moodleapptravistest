@@ -14,7 +14,7 @@
 
 import { Injectable } from '@angular/core';
 
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreSites } from '@services/sites';
 import { CoreUtils } from '@services/utils/utils';
 import { CoreSite } from '@classes/site';
@@ -94,7 +94,7 @@ export class CoreXAPIProvider {
             return false;
         };
 
-        if (!CoreNetwork.isOnline() || options.offline) {
+        if (!CoreApp.isOnline() || options.offline) {
             // App is offline, store the action.
             return storeOffline();
         }

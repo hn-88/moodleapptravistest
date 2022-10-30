@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreSites } from '@services/sites';
 import { CoreSync } from '@services/sync';
 import { CoreTextUtils } from '@services/utils/text';
@@ -272,7 +272,7 @@ export class CoreSyncBaseProvider<T = void> {
      * @return Resolved with siteIds selected. Rejected if offline.
      */
     async syncOnSites(syncFunctionLog: string, syncFunction: (siteId: string) => void, siteId?: string): Promise<void> {
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             const message = `Cannot sync '${syncFunctionLog}' because device is offline.`;
             this.logger.debug(message);
 

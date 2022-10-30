@@ -60,7 +60,7 @@ export class AddonRemoteThemesHandlerService implements CoreStyleHandler {
             }
 
             // Config received, it's a temp site.
-            return this.getRemoteStyles(config.mobilecssurl);
+            return await this.getRemoteStyles(config.mobilecssurl);
         }
 
         const site = await CoreSites.getSite(siteId);
@@ -108,7 +108,7 @@ export class AddonRemoteThemesHandlerService implements CoreStyleHandler {
             return '';
         }
 
-        return CoreWS.getText(url);
+        return await CoreWS.getText(url);
     }
 
     /**

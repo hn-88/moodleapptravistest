@@ -61,7 +61,6 @@ type NewDiscussionData = {
 @Component({
     selector: 'page-addon-mod-forum-new-discussion',
     templateUrl: 'new-discussion.html',
-    styleUrls: ['new-discussion.scss'],
 })
 export class AddonModForumNewDiscussionPage implements OnInit, OnDestroy, CanLeave {
 
@@ -92,7 +91,6 @@ export class AddonModForumNewDiscussionPage implements OnInit, OnDestroy, CanLea
     advanced = false; // Display all form fields.
     accessInfo: AddonModForumAccessInformation = {};
     courseId!: number;
-    groupName?: string;
 
     discussions?: AddonModForumNewDiscussionDiscussionsSwipeManager;
 
@@ -104,7 +102,6 @@ export class AddonModForumNewDiscussionPage implements OnInit, OnDestroy, CanLea
     protected isDestroyed = false;
     protected originalData?: Partial<NewDiscussionData>;
     protected forceLeave = false;
-    protected initialGroupId?: number;
 
     constructor(protected route: ActivatedRoute, @Optional() protected splitView: CoreSplitViewComponent) {}
 
@@ -118,10 +115,6 @@ export class AddonModForumNewDiscussionPage implements OnInit, OnDestroy, CanLea
             this.cmId = CoreNavigator.getRequiredRouteNumberParam('cmId');
             this.forumId = CoreNavigator.getRequiredRouteNumberParam('forumId');
             this.timeCreated = CoreNavigator.getRequiredRouteNumberParam('timeCreated');
-            this.initialGroupId = CoreNavigator.getRouteNumberParam('groupId');
-
-            // Discussion list uses 0 for all participants, but this page WebServices use a different value. Convert it.
-            this.initialGroupId = this.initialGroupId === 0 ? AddonModForumProvider.ALL_PARTICIPANTS : this.initialGroupId;
 
             if (this.timeCreated !== 0 && (routeData.swipeEnabled ?? true)) {
                 const source = CoreRoutedItemsManagerSourcesTracker.getOrCreateSource(
@@ -195,9 +188,8 @@ export class AddonModForumNewDiscussionPage implements OnInit, OnDestroy, CanLea
                                     this.groups = forumGroups;
                                     this.groupIds = forumGroups.map((group) => group.id).filter((id) => id > 0);
                                     // Do not override group id.
-                                    this.newDiscussion.groupId = this.newDiscussion.groupId || this.getInitialGroupId();
+                                    this.newDiscussion.groupId = this.newDiscussion.groupId || forumGroups[0].id;
                                     this.showGroups = true;
-                                    this.calculateGroupName();
                                     if (this.groupIds.length <= 1) {
                                         this.newDiscussion.postToAllGroups = false;
                                     }
@@ -271,7 +263,6 @@ export class AddonModForumNewDiscussionPage implements OnInit, OnDestroy, CanLea
                             this.newDiscussion.subscribe = !!discussion.options.discussionsubscribe;
                             this.newDiscussion.pin = !!discussion.options.discussionpinned;
                             this.messageControl.setValue(discussion.message);
-                            this.calculateGroupName();
 
                             // Treat offline attachments if any.
                             if (typeof discussion.options.attachmentsid === 'object' && discussion.options.attachmentsid.offline) {
@@ -387,16 +378,6 @@ export class AddonModForumNewDiscussionPage implements OnInit, OnDestroy, CanLea
     }
 
     /**
-     * Get the initial group ID.
-     *
-     * @return Initial group ID.
-     */
-    protected getInitialGroupId(): number {
-        return (this.initialGroupId && this.groups.find(group => group.id === this.initialGroupId)) ?
-            this.initialGroupId : this.groups[0].id;
-    }
-
-    /**
      * Add the "All participants" option to a list of groups if the user can add a discussion to all participants.
      *
      * @param groups Groups.
@@ -472,7 +453,6 @@ export class AddonModForumNewDiscussionPage implements OnInit, OnDestroy, CanLea
                 cmId: this.cmId,
                 discussionIds: discussionIds,
                 discTimecreated: discTimecreated,
-                groupId: this.showGroups && !this.newDiscussion.postToAllGroups ? this.newDiscussion.groupId : undefined,
             },
             CoreSites.getCurrentSiteId(),
         );
@@ -606,17 +586,6 @@ export class AddonModForumNewDiscussionPage implements OnInit, OnDestroy, CanLea
      */
     toggleAdvanced(): void {
         this.advanced = !this.advanced;
-    }
-
-    /**
-     * Calculate current group's name.
-     */
-    calculateGroupName(): void {
-        if (this.newDiscussion.groupId <= 0) {
-            this.groupName = undefined;
-        } else {
-            this.groupName = this.groups.find(group => group.id === this.newDiscussion.groupId)?.name;
-        }
     }
 
     /**

@@ -28,12 +28,11 @@ import { ActivatedRoute, Params } from '@angular/router';
 import { CorePushNotificationsNotificationBasicData } from '@features/pushnotifications/services/pushnotifications';
 import { CorePushNotificationsDelegate } from '@features/pushnotifications/services/push-delegate';
 import { Subscription } from 'rxjs';
-import { Translate } from '@singletons';
+import { Translate, Platform } from '@singletons';
 import { IonRefresher } from '@ionic/angular';
 import { CoreNavigator } from '@services/navigator';
 import { CoreScreen } from '@services/screen';
 import { CoreMainMenuDeepLinkManager } from '@features/mainmenu/classes/deep-link-manager';
-import { CorePlatform } from '@services/platform';
 
 /**
  * Page that displays the list of discussions.
@@ -115,7 +114,7 @@ export class AddonMessagesDiscussions35Page implements OnInit, OnDestroy {
         );
 
         // Refresh the view when the app is resumed.
-        this.appResumeSubscription = CorePlatform.resume.subscribe(() => {
+        this.appResumeSubscription = Platform.resume.subscribe(() => {
             if (!this.loaded) {
                 return;
             }
@@ -257,13 +256,16 @@ export class AddonMessagesDiscussions35Page implements OnInit, OnDestroy {
     async gotoDiscussion(discussionUserId: number, messageId?: number): Promise<void> {
         this.discussionUserId = discussionUserId;
 
-        const params: Params = {};
+        const params: Params = {
+            userId: discussionUserId,
+        };
 
         if (messageId) {
             params.message = messageId;
         }
 
-        const path = CoreNavigator.getRelativePathToParent('/messages/index') + `discussion/user/${discussionUserId}`;
+        const splitViewLoaded = CoreNavigator.isCurrentPathInTablet('**/messages/index/discussion');
+        const path = (splitViewLoaded ? '../' : '') + 'discussion';
 
         await CoreNavigator.navigate(path, { params });
     }

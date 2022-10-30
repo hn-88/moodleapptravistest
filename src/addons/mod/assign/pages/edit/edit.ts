@@ -20,7 +20,7 @@ import { CanLeave } from '@guards/can-leave';
 import { CoreNavigator } from '@services/navigator';
 import { CoreSites, CoreSitesReadingStrategy } from '@services/sites';
 import { CoreSync } from '@services/sync';
-import { CoreDomUtils, ToastDuration } from '@services/utils/dom';
+import { CoreDomUtils } from '@services/utils/dom';
 import { CoreFormFields, CoreForms } from '@singletons/form';
 import { Translate } from '@singletons';
 import { CoreEvents } from '@singletons/events';
@@ -329,7 +329,7 @@ export class AddonModAssignEditPage implements OnInit, OnDestroy, CanLeave {
                 // Cannot submit in online, prepare for offline usage.
                 this.saveOffline = true;
 
-                return AddonModAssignHelper.prepareSubmissionPluginData(
+                return await AddonModAssignHelper.prepareSubmissionPluginData(
                     this.assign!,
                     this.userSubmission,
                     inputData,
@@ -467,7 +467,7 @@ export class AddonModAssignEditPage implements OnInit, OnDestroy, CanLeave {
     async timeUp(): Promise<void> {
         this.timeUpToast = await CoreDomUtils.showToastWithOptions({
             message: Translate.instant('addon.mod_assign.caneditsubmission'),
-            duration: ToastDuration.STICKY,
+            duration: 0,
             buttons: [Translate.instant('core.dismiss')],
             cssClass: 'core-danger-toast',
         });

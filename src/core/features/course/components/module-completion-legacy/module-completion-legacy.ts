@@ -24,7 +24,6 @@ import { Translate } from '@singletons';
 import { CoreCourseModuleCompletionBaseComponent } from '@features/course/classes/module-completion';
 import { CoreCourseHelper } from '@features/course/services/course-helper';
 import { CoreEventObserver, CoreEvents } from '@singletons/events';
-import { BehaviorSubject } from 'rxjs';
 
 /**
  * Component to handle activity completion in sites previous to 3.11.
@@ -44,7 +43,7 @@ export class CoreCourseModuleCompletionLegacyComponent extends CoreCourseModuleC
     implements OnInit, OnDestroy {
 
     completionImage?: string;
-    completionDescription$ = new BehaviorSubject('');
+    completionDescription?: string;
 
     protected completionObserver?: CoreEventObserver;
 
@@ -134,7 +133,7 @@ export class CoreCourseModuleCompletionLegacyComponent extends CoreCourseModuleC
             };
         }
 
-        this.completionDescription$.next(Translate.instant(langKey, translateParams));
+        this.completionDescription = Translate.instant(langKey, translateParams);
     }
 
     /**

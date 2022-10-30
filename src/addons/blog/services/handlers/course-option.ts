@@ -20,7 +20,8 @@ import {
     CoreCourseOptionsHandler,
     CoreCourseOptionsHandlerData,
 } from '@features/course/services/course-options-delegate';
-import { CoreCourseAnyCourseData, CoreCourseUserAdminOrNavOptionIndexed } from '@features/courses/services/courses';
+import { CoreCourseUserAdminOrNavOptionIndexed } from '@features/courses/services/courses';
+import { CoreEnrolledCourseDataWithExtraInfoAndOptions } from '@features/courses/services/courses-helper';
 import { CoreFilepool } from '@services/filepool';
 import { CoreSites } from '@services/sites';
 import { CoreWSFile } from '@services/ws';
@@ -82,7 +83,7 @@ export class AddonBlogCourseOptionHandlerService implements CoreCourseOptionsHan
     /**
      * @inheritdoc
      */
-    async prefetch(course: CoreCourseAnyCourseData): Promise<void> {
+    async prefetch(course: CoreEnrolledCourseDataWithExtraInfoAndOptions): Promise<void> {
         const siteId = CoreSites.getCurrentSiteId();
 
         const result = await AddonBlog.getEntries({ courseid: course.id });

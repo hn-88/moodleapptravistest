@@ -49,7 +49,7 @@ import { AddonModAssignOffline } from '../../services/assign-offline';
 import { CoreUser, CoreUserProfile } from '@features/user/services/user';
 import { CoreTimeUtils } from '@services/utils/time';
 import { CoreNavigator } from '@services/navigator';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreFileUploaderHelper } from '@features/fileuploader/services/fileuploader-helper';
 import { CoreLang } from '@services/lang';
 import { CoreError } from '@classes/errors/error';
@@ -292,7 +292,7 @@ export class AddonModAssignSubmissionComponent implements OnInit, OnDestroy, Can
             return;
         }
 
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             CoreDomUtils.showErrorModal('core.networkerrormsg', true);
 
             return;
@@ -525,7 +525,7 @@ export class AddonModAssignSubmissionComponent implements OnInit, OnDestroy, Can
                             submitId: this.submitId,
                         }, this.siteId);
                     }
-                } catch {
+                } catch (error) {
                     // Ignore errors, probably user is offline or sync is blocked.
                 }
             }

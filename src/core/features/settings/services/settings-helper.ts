@@ -14,7 +14,6 @@
 
 import { Injectable } from '@angular/core';
 import { CoreApp } from '@services/app';
-import { CoreNetwork } from '@services/network';
 import { CoreCronDelegate } from '@services/cron';
 import { CoreEvents } from '@singletons/events';
 import { CoreFilepool } from '@services/filepool';
@@ -29,7 +28,6 @@ import { CoreCourse } from '@features/course/services/course';
 import { makeSingleton, Translate } from '@singletons';
 import { CoreError } from '@classes/errors/error';
 import { Observable, Subject } from 'rxjs';
-import { CoreTextUtils } from '@services/utils/text';
 
 /**
  * Object with space usage and cache entries that can be erased.
@@ -52,8 +50,8 @@ export const enum CoreColorScheme {
  * Constants to define zoom levels.
  */
 export const enum CoreZoomLevel {
-    NONE = 'none',
-    MEDIUM = 'medium',
+    NORMAL = 'normal',
+    LOW = 'low',
     HIGH = 'high',
 }
 
@@ -84,9 +82,9 @@ export class CoreSettingsHelperProvider {
                 }
             };
 
-            CoreEvents.on(CoreEvents.LOGIN, () => applySiteScheme());
+            CoreEvents.on(CoreEvents.LOGIN, applySiteScheme.bind(this));
 
-            CoreEvents.on(CoreEvents.SITE_UPDATED, () => applySiteScheme());
+            CoreEvents.on(CoreEvents.SITE_UPDATED, applySiteScheme.bind(this));
 
             CoreEvents.on(CoreEvents.LOGOUT, () => {
                 // Reset color scheme settings.
@@ -261,14 +259,13 @@ export class CoreSettingsHelperProvider {
         const site = await CoreSites.getSite(siteId);
         const hasSyncHandlers = CoreCronDelegate.hasManualSyncHandlers();
 
-        // All these errors should not happen on manual sync because are prevented on UI.
         if (site.isLoggedOut()) {
             // Cannot sync logged out sites.
             throw new CoreError(Translate.instant('core.settings.cannotsyncloggedout'));
-        } else if (hasSyncHandlers && !CoreNetwork.isOnline()) {
+        } else if (hasSyncHandlers && !CoreApp.isOnline()) {
             // We need connection to execute sync.
             throw new CoreError(Translate.instant('core.settings.cannotsyncoffline'));
-        } else if (hasSyncHandlers && syncOnlyOnWifi && CoreNetwork.isNetworkAccessLimited()) {
+        } else if (hasSyncHandlers && syncOnlyOnWifi && CoreApp.isNetworkAccessLimited()) {
             throw new CoreError(Translate.instant('core.settings.cannotsyncwithoutwifi'));
         }
 
@@ -288,8 +285,6 @@ export class CoreSettingsHelperProvider {
 
         try {
             await syncPromise;
-        } catch (error) {
-            throw CoreTextUtils.addTitleToError(error, Translate.instant('core.settings.sitesyncfailed'));
         } finally {
             delete this.syncPromises[siteId];
         }
@@ -308,13 +303,13 @@ export class CoreSettingsHelperProvider {
             }
 
             // Reset the value to solve edge cases.
-            CoreConfig.set(CoreConstants.SETTINGS_ZOOM_LEVEL, CoreZoomLevel.NONE);
+            CoreConfig.set(CoreConstants.SETTINGS_ZOOM_LEVEL, CoreZoomLevel.NORMAL);
 
             if (fontSize < 100) {
                 if (fontSize > 90) {
                     CoreConfig.set(CoreConstants.SETTINGS_ZOOM_LEVEL, CoreZoomLevel.HIGH);
                 } else if (fontSize > 70) {
-                    CoreConfig.set(CoreConstants.SETTINGS_ZOOM_LEVEL, CoreZoomLevel.MEDIUM);
+                    CoreConfig.set(CoreConstants.SETTINGS_ZOOM_LEVEL, CoreZoomLevel.LOW);
                 }
             }
 
@@ -331,7 +326,7 @@ export class CoreSettingsHelperProvider {
      * @return The saved zoom Level option.
      */
     async getZoomLevel(): Promise<CoreZoomLevel> {
-        return CoreConfig.get(CoreConstants.SETTINGS_ZOOM_LEVEL, CoreConstants.CONFIG.defaultZoomLevel);
+        return CoreConfig.get(CoreConstants.SETTINGS_ZOOM_LEVEL, CoreZoomLevel.NORMAL);
     }
 
     /**
@@ -459,10 +454,9 @@ export class CoreSettingsHelperProvider {
      * @param enable True to enable dark mode, false to disable.
      */
     protected toggleDarkMode(enable: boolean = false): void {
-        const isDark = CoreDomUtils.hasModeClass('dark');
-
+        const isDark = document.body.classList.contains('dark');
         if (isDark !== enable) {
-            CoreDomUtils.toggleModeClass('dark', enable);
+            document.body.classList.toggle('dark', enable);
             this.darkModeObservable.next(enable);
 
             CoreApp.setStatusBarColor();

@@ -14,7 +14,7 @@
 
 import { Component, Input, OnInit } from '@angular/core';
 import { CoreSites, CoreSitesReadingStrategy } from '@services/sites';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { AddonModForum, AddonModForumPost } from '@addons/mod/forum/services/forum';
 import { PopoverController } from '@singletons';
 import { CoreDomUtils } from '@services/utils/dom';
@@ -101,7 +101,7 @@ export class AddonModForumPostOptionsMenuComponent implements OnInit {
      */
     deletePost(): void {
         if (!this.offlinePost) {
-            if (!CoreNetwork.isOnline()) {
+            if (!CoreApp.isOnline()) {
                 CoreDomUtils.showErrorModal(new CoreNetworkError());
 
                 return;
@@ -117,7 +117,7 @@ export class AddonModForumPostOptionsMenuComponent implements OnInit {
      * Edit a post.
      */
     editPost(): void {
-        if (!this.offlinePost && !CoreNetwork.isOnline()) {
+        if (!this.offlinePost && !CoreApp.isOnline()) {
             CoreDomUtils.showErrorModal(new CoreNetworkError());
 
             return;

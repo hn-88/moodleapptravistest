@@ -282,7 +282,7 @@ export type AddonCalendarEventDBRecord = {
     id: number;
     name: string;
     description: string;
-    eventtype: AddonCalendarEventType | string;
+    eventtype: AddonCalendarEventType;
     timestart: number;
     timeduration: number;
     categoryid?: number;

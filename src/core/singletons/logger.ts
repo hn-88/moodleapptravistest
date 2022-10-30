@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import moment from 'moment-timezone';
+import moment from 'moment';
 
 import { CoreConstants } from '@/core/constants';
 
@@ -86,15 +86,15 @@ export class CoreLogger {
 
         return new CoreLogger(
             // eslint-disable-next-line no-console
-            CoreLogger.prepareLogFn((...data) => console.log(...data), className),
+            CoreLogger.prepareLogFn(console.log.bind(console), className),
             // eslint-disable-next-line no-console
-            CoreLogger.prepareLogFn((...data) => console.info(...data), className),
+            CoreLogger.prepareLogFn(console.info.bind(console), className),
             // eslint-disable-next-line no-console
-            CoreLogger.prepareLogFn((...data) => console.warn(...data), className),
+            CoreLogger.prepareLogFn(console.warn.bind(console), className),
             // eslint-disable-next-line no-console
-            CoreLogger.prepareLogFn((...data) => console.debug(...data), className),
+            CoreLogger.prepareLogFn(console.debug.bind(console), className),
             // eslint-disable-next-line no-console
-            CoreLogger.prepareLogFn((...data) => console.error(...data), className),
+            CoreLogger.prepareLogFn(console.error.bind(console), className),
         );
     }
 

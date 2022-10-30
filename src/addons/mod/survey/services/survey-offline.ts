@@ -137,7 +137,7 @@ export class AddonModSurveyOfflineProvider {
             courseid: courseId,
             userid: userId,
             answers: JSON.stringify(answers),
-            timecreated: Date.now(),
+            timecreated: new Date().getTime(),
         };
 
         await site.getDb().insertRecord(SURVEY_TABLE, entry);

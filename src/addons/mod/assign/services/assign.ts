@@ -24,7 +24,7 @@ import { CoreGrades } from '@features/grades/services/grades';
 import { CoreTimeUtils } from '@services/utils/time';
 import { CoreCourseLogHelper } from '@features/course/services/log-helper';
 import { CoreError } from '@classes/errors/error';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreUtils } from '@services/utils/utils';
 import { AddonModAssignOffline } from './assign-offline';
 import { AddonModAssignSubmissionDelegate } from './submission-delegate';
@@ -565,7 +565,7 @@ export class AddonModAssignProvider {
         };
 
         try {
-            return await this.getSubmissionStatus(assign.id, newOptions);
+            return this.getSubmissionStatus(assign.id, newOptions);
         } catch {
             // Error, return the first result even if it doesn't have the user submission.
             return response;
@@ -1027,7 +1027,7 @@ export class AddonModAssignProvider {
             return false;
         };
 
-        if (allowOffline && !CoreNetwork.isOnline()) {
+        if (allowOffline && !CoreApp.isOnline()) {
             // App is offline, store the action.
             return storeOffline();
         }
@@ -1137,7 +1137,7 @@ export class AddonModAssignProvider {
             return false;
         };
 
-        if (forceOffline || !CoreNetwork.isOnline()) {
+        if (forceOffline || !CoreApp.isOnline()) {
             // App is offline, store the action.
             return storeOffline();
         }
@@ -1234,7 +1234,7 @@ export class AddonModAssignProvider {
             return false;
         };
 
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             // App is offline, store the action.
             return storeOffline();
         }
@@ -1825,7 +1825,7 @@ export enum AddonModAssignSubmissionStatusValues {
     NO_ONLINE_SUBMISSIONS = 'noonlinesubmissions',
     NO_SUBMISSION = 'nosubmission',
     GRADED_FOLLOWUP_SUBMIT = 'gradedfollowupsubmit',
-}
+};
 
 /**
  * Grading status.
@@ -1837,7 +1837,7 @@ export enum AddonModAssignGradingStates {
     // Added by App Statuses.
     MARKING_WORKFLOW_STATE_RELEASED = 'released', // with ASSIGN_MARKING_WORKFLOW_STATE_RELEASED
     GRADED_FOLLOWUP_SUBMIT = 'gradedfollowupsubmit',
-}
+};
 
 /**
  * Reopen attempt methods.
@@ -1847,4 +1847,4 @@ export enum AddonModAssignAttemptReopenMethodValues {
     NONE = 'none',
     MANUAL = 'manual',
     UNTILPASS = 'untilpass',
-}
+};

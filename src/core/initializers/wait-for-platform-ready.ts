@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { CorePlatform } from '@services/platform';
+import { Platform } from '@singletons';
 
 export default async function(): Promise<void> {
-    await CorePlatform.ready();
+    await Platform.ready();
 }

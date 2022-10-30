@@ -10,7 +10,20 @@
       "node",
       "resize-observer-browser",
       "webpack-env"
-    ]
+    ],
+    "paths": {
+      "@addons/*": ["addons/*"],
+      "@classes/*": ["core/classes/*"],
+      "@components/*": ["core/components/*"],
+      "@directives/*": ["core/directives/*"],
+      "@features/*": ["core/features/*"],
+      "@guards/*": ["core/guards/*"],
+      "@pipes/*": ["core/pipes/*"],
+      "@services/*": ["core/services/*"],
+      "@singletons": ["core/singletons/index"],
+      "@singletons/*": ["core/singletons/*"],
+      "@/*": ["*"]
+    }
   },
   "files": [
     "src/main.ts",
@@ -21,11 +34,8 @@
     "src/**/*.d.ts"
   ],
   "exclude": [
-    "src/**/tests/**",
-    "src/**/stories/**",
-    "src/testing/**",
-    "src/storybook/**",
     "src/**/*.test.ts",
-    "src/**/*.stories.*"
+    "src/testing/**",
+    "src/**/tests/**"
   ]
 }

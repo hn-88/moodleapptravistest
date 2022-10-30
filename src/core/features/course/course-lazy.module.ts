@@ -14,7 +14,6 @@
 
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { CoreCourseHelper } from './services/course-helper';
 
 export const COURSE_INDEX_PATH = ':courseId';
 
@@ -34,7 +33,8 @@ const routes: Routes = [
     },
     {
         path: ':courseId/summary',
-        loadChildren: () => CoreCourseHelper.getCourseSummaryRouteModule(),
+        loadChildren: () =>
+            import('./pages/course-summary/course-summary.module').then(m => m.CoreCourseSummaryPageModule),
     },
 ];
 

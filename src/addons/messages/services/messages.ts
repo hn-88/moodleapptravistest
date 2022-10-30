@@ -15,7 +15,7 @@
 import { Injectable } from '@angular/core';
 import { CoreLogger } from '@singletons/logger';
 import { CoreSites } from '@services/sites';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreUser, CoreUserBasicData } from '@features/user/services/user';
 import {
     AddonMessagesOffline,
@@ -1620,12 +1620,13 @@ export class AddonMessagesProvider {
             preSets.emergencyCache = false;
         }
 
-        return this.getMessages(params, preSets, siteId);
+        return await this.getMessages(params, preSets, siteId);
     }
 
     /**
      * Invalidate all contacts cache.
      *
+     * @param userId The user ID.
      * @param siteId Site ID. If not defined, current site.
      * @return Resolved when done.
      */
@@ -2423,7 +2424,7 @@ export class AddonMessagesProvider {
 
         siteId = siteId || CoreSites.getCurrentSiteId();
 
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             // App is offline, store the message.
             return storeOffline();
         }
@@ -2516,7 +2517,7 @@ export class AddonMessagesProvider {
             messages,
         };
 
-        return site.write('core_message_send_instant_messages', data);
+        return await site.write('core_message_send_instant_messages', data);
     }
 
     /**
@@ -2554,7 +2555,7 @@ export class AddonMessagesProvider {
             };
         };
 
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             // App is offline, store the message.
             return storeOffline();
         }
@@ -2650,7 +2651,7 @@ export class AddonMessagesProvider {
             })),
         };
 
-        return site.write('core_message_send_messages_to_conversation', params);
+        return await site.write('core_message_send_messages_to_conversation', params);
     }
 
     /**

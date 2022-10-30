@@ -200,8 +200,10 @@ export class CorePluginFileDelegateService extends CoreDelegate<CorePluginFileHa
 
         if (handler && handler.getFileSize) {
             try {
-                return await handler.getFileSize(downloadableFile, siteId);
-            } catch {
+                const size = handler.getFileSize(downloadableFile, siteId);
+
+                return size;
+            } catch (error) {
                 // Ignore errors.
             }
         }

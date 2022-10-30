@@ -7,7 +7,7 @@
     --background: var(--ion-item-background);
 }
 
-:host-context(html.dark) {
+:host-context(body.dark) {
     --background: var(--medium);
     --color: var(--white);
     --button-color: var(--gray-200);

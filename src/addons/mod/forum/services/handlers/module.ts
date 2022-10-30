@@ -16,7 +16,8 @@ import { Injectable, Type } from '@angular/core';
 import { AddonModForum, AddonModForumProvider } from '../forum';
 import { makeSingleton, Translate } from '@singletons';
 import { CoreEvents } from '@singletons/events';
-import { CoreSites, CoreSitesReadingStrategy } from '@services/sites';
+import { CoreSites } from '@services/sites';
+import { CoreUtils } from '@services/utils/utils';
 import { CoreCourseModuleHandler, CoreCourseModuleHandlerData } from '@features/course/services/module-delegate';
 import { CoreConstants, ModPurpose } from '@/core/constants';
 import { AddonModForumIndexComponent } from '../../components/index';
@@ -114,12 +115,11 @@ export class AddonModForumModuleHandlerService extends CoreModuleHandlerBase imp
         data.extraBadge = Translate.instant('core.loading');
         data.extraBadgeColor = CoreIonicColorNames.DARK;
 
+        await CoreUtils.ignoreErrors(AddonModForum.invalidateForumData(courseId));
+
         try {
             // Handle unread posts.
-            const forum = await AddonModForum.getForum(courseId, moduleId, {
-                readingStrategy: CoreSitesReadingStrategy.PREFER_NETWORK,
-                siteId,
-            });
+            const forum = await AddonModForum.getForum(courseId, moduleId, { siteId });
 
             data.extraBadgeColor = undefined;
             data.extraBadge = forum.unreadpostscount

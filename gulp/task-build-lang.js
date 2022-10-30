@@ -144,10 +144,11 @@ class BuildLangTask {
 
             switch (folders[0]) {
                 case 'core':
-                    if (folders[1] == 'features') {
-                        return `core.${folders[2]}.`;
-                    } else {
-                        return 'core.';
+                    switch (folders[1]) {
+                        case 'features':
+                            return `core.${folders[2]}.`;
+                        default:
+                            return 'core.';
                     }
                 case 'addons':
                     return `addon.${folders.slice(1).join('_')}.`;

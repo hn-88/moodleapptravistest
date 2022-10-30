@@ -70,7 +70,7 @@ function fix_comment($desc) {
     if (count($lines) > 1) {
         $desc = array_shift($lines)."\n";
 
-        foreach ($lines as $line) {
+        foreach ($lines as $i => $line) {
             $spaces = strlen($line) - strlen(ltrim($line));
             $desc .= str_repeat(' ', $spaces - 3) . '// '. ltrim($line)."\n";
         }
@@ -138,7 +138,9 @@ function convert_to_ts($key, $value, $boolisnumber = false, $indentation = '', $
             $type = 'number';
         }
 
-        return convert_key_type($key, $type, $value->required, $indentation);
+        $result = convert_key_type($key, $type, $value->required, $indentation);
+
+        return $result;
 
     } else if ($value instanceof external_single_structure) {
         // It's an object.
@@ -276,7 +278,7 @@ function remove_default_closures($value) {
 
     } else if ($value instanceof external_single_structure) {
 
-        foreach ($value->keys as $subvalue) {
+        foreach ($value->keys as $key => $subvalue) {
             remove_default_closures($subvalue);
         }
 

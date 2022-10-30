@@ -17,7 +17,6 @@ import { Translate } from '@singletons';
 import { ModalOptions } from '@ionic/core';
 import { CoreDomUtils } from '@services/utils/dom';
 import { IonSelect } from '@ionic/angular';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 /**
  * Component that show a combo select button (combobox).
@@ -41,15 +40,8 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
     selector: 'core-combobox',
     templateUrl: 'core-combobox.html',
     styleUrls: ['combobox.scss'],
-    providers: [
-        {
-            provide: NG_VALUE_ACCESSOR,
-            multi:true,
-            useExisting: CoreComboboxComponent,
-        },
-    ],
 })
-export class CoreComboboxComponent implements ControlValueAccessor {
+export class CoreComboboxComponent {
 
     @ViewChild(IonSelect) select!: IonSelect;
 
@@ -66,49 +58,6 @@ export class CoreComboboxComponent implements ControlValueAccessor {
 
     expanded = false;
 
-    protected touched = false;
-    protected formOnChange?: (value: unknown) => void;
-    protected formOnTouched?: () => void;
-
-    /**
-     * @inheritdoc
-     */
-    writeValue(selection: string): void {
-        this.selection = selection;
-    }
-
-    /**
-     * @inheritdoc
-     */
-    registerOnChange(onChange: (value: unknown) => void): void {
-        this.formOnChange = onChange;
-    }
-
-    /**
-     * @inheritdoc
-     */
-    registerOnTouched(onTouched: () => void): void {
-        this.formOnTouched = onTouched;
-    }
-
-    /**
-     * @inheritdoc
-     */
-    setDisabledState(disabled: boolean): void {
-        this.disabled = disabled;
-    }
-
-    /**
-     * Callback when the selected value changes.
-     *
-     * @param selection Selected value.
-     */
-    onValueChanged(selection: unknown): void {
-        this.touch();
-        this.onChange.emit(selection);
-        this.formOnChange?.(selection);
-    }
-
     /**
      * Shows combobox modal.
      *
@@ -116,8 +65,6 @@ export class CoreComboboxComponent implements ControlValueAccessor {
      * @return Promise resolved when done.
      */
     async openSelect(event?: UIEvent): Promise<void> {
-        this.touch();
-
         if (this.interface == 'modal') {
             if (this.expanded || !this.modalOptions) {
                 return;
@@ -132,23 +79,11 @@ export class CoreComboboxComponent implements ControlValueAccessor {
             this.expanded = false;
 
             if (data) {
-                this.onValueChanged(data);
+                this.onChange.emit(data);
             }
         } else if (this.select) {
             this.select.open(event);
         }
-    }
-
-    /**
-     * Mark as touched.
-     */
-    protected touch(): void {
-        if (this.touched) {
-            return;
-        }
-
-        this.touched = true;
-        this.formOnTouched?.();
     }
 
 }

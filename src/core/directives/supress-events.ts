@@ -80,7 +80,7 @@ export class CoreSupressEventsDirective implements OnInit {
 
         // Suppress the events.
         for (const evName of events) {
-            this.element.addEventListener(evName, (event) => this.stopBubble(event));
+            this.element.addEventListener(evName, this.stopBubble.bind(this));
         }
 
         // Now listen to "click" events.

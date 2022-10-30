@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { Component, Input } from '@angular/core';
-import { CorePlatform } from '@services/platform';
+import { Platform } from '@singletons';
 
 const enum ScrollPosition {
     START = 'start',
@@ -44,16 +44,12 @@ export class CoreHorizontalScrollControlsComponent {
     /**
      * Scroll the target in the given direction.
      *
-     * @param ev Click event
      * @param direction Scroll direction.
      */
-    scroll(ev: Event, direction: 'forward' | 'backward'): void {
+    scroll(direction: 'forward' | 'backward'): void {
         if (!this.target) {
             return;
         }
-
-        ev.stopPropagation();
-        ev.preventDefault();
 
         const leftDelta = direction === 'forward' ? this.target.clientWidth : -this.target.clientWidth;
         const newScrollLeft = Math.max(
@@ -93,14 +89,14 @@ export class CoreHorizontalScrollControlsComponent {
         }
 
         if (scrollLeft === 0) {
-            return CorePlatform.isRTL ? ScrollPosition.END : ScrollPosition.START;
+            return Platform.isRTL ? ScrollPosition.END : ScrollPosition.START;
         }
 
-        if (!CorePlatform.isRTL && this.target.scrollWidth - scrollLeft === this.target.clientWidth) {
+        if (!Platform.isRTL && this.target.scrollWidth - scrollLeft === this.target.clientWidth) {
             return ScrollPosition.END;
         }
 
-        if (CorePlatform.isRTL && this.target.scrollWidth + scrollLeft === this.target.clientWidth) {
+        if (Platform.isRTL && this.target.scrollWidth + scrollLeft === this.target.clientWidth) {
             return ScrollPosition.START;
         }
 

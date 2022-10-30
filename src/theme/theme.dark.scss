@@ -5,7 +5,7 @@
  * http://ionicframework.com/docs/theming/
  */
 
-html.dark {
+:root body.dark {
 
     // Ionic shades, defined for ionic internal use.
     --ion-color-step-0:    var(--black);
@@ -29,10 +29,6 @@ html.dark {
     --ion-color-step-900:  var(--gray-100);
     --ion-color-step-950:  var(--gray-100);
     --ion-color-step-1000: var(--white);
-
-    @each $color-name, $unused in $colors {
-        @include generate-color($color-name, $colors, 'dark');
-    }
 
     --ion-background-color:     #{$background-color-dark};
     --ion-background-color-rgb: #{$background-color-dark-rgb};
@@ -150,13 +146,13 @@ html.dark {
 
     --core-collapsible-footer-background: var(--contrast-background);
 
-    --core-messages-message-bg: var(--gray-800);
-    --core-messages-message-activated-bg: var(--gray-700);
-    --core-messages-message-note-text: var(--subdued-text-color);
-    --core-messages-message-mine-bg: var(--gray-700);
-    --core-messages-message-mine-activated-bg: var(--gray-600);
-    --core-messages-discussion-badge: var(--primary);
-    --core-messages-discussion-badge-text: var(--gray-100);
+    --addon-messages-message-bg: var(--gray-800);
+    --addon-messages-message-activated-bg: var(--gray-700);
+    --addon-messages-message-note-text: var(--subdued-text-color);
+    --addon-messages-message-mine-bg: var(--gray-700);
+    --addon-messages-message-mine-activated-bg: var(--gray-600);
+    --addon-messages-discussion-badge: var(--primary);
+    --addon-messages-discussion-badge-text: var(--gray-100);
 
     --addon-forum-border-color: var(--gray-500);
     --addon-forum-highlight-color: var(--gray-200);

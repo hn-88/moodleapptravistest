@@ -70,10 +70,7 @@ export class AddonModResourceModuleHandlerService extends CoreModuleHandlerBase 
         sectionId?: number,
         forCoursePage?: boolean,
     ): Promise<CoreCourseModuleHandlerData> {
-        const openWithPicker = CoreFileHelper.defaultIsOpenWithPicker();
-
-        const handlerData = await super.getData(module, courseId, sectionId, forCoursePage);
-        handlerData.updateStatus = (status) => {
+        const updateStatus = (status: string): void => {
             if (!handlerData.buttons) {
                 return;
             }
@@ -81,6 +78,10 @@ export class AddonModResourceModuleHandlerService extends CoreModuleHandlerBase 
             handlerData.buttons[0].hidden = status !== CoreConstants.DOWNLOADED ||
                 AddonModResourceHelper.isDisplayedInIframe(module);
         };
+        const openWithPicker = CoreFileHelper.defaultIsOpenWithPicker();
+
+        const handlerData = await super.getData(module, courseId, sectionId, forCoursePage);
+        handlerData.updateStatus = updateStatus.bind(this);
         handlerData.buttons = [{
             hidden: true,
             icon: openWithPicker ? 'fas-share-square' : 'fas-file',
@@ -103,11 +104,13 @@ export class AddonModResourceModuleHandlerService extends CoreModuleHandlerBase 
             // Ignore errors.
         });
 
-        try {
-            handlerData.icon = this.getIconSrc(module);
-        } catch {
+        this.getIconSrc(module).then((icon) => {
+            handlerData.icon = icon;
+
+            return;
+        }).catch(() => {
             // Ignore errors.
-        }
+        });
 
         return handlerData;
     }
@@ -224,13 +227,13 @@ export class AddonModResourceModuleHandlerService extends CoreModuleHandlerBase 
     /**
      * @inheritdoc
      */
-    getIconSrc(module?: CoreCourseModuleData): string | undefined {
+    async getIconSrc(module?: CoreCourseModuleData): Promise<string | undefined> {
         if (!module) {
             return;
         }
 
         if (CoreSites.getCurrentSite()?.isVersionGreaterEqualThan('4.0')) {
-            return CoreCourse.getModuleIconSrc(module.modname, module.modicon);
+            return await CoreCourse.getModuleIconSrc(module.modname, module.modicon);
         }
         let mimetypeIcon = '';
 
@@ -248,7 +251,7 @@ export class AddonModResourceModuleHandlerService extends CoreModuleHandlerBase 
             mimetypeIcon = CoreMimetypeUtils.getFileIcon(file.filename || '');
         }
 
-        return CoreCourse.getModuleIconSrc(module.modname, module.modicon, mimetypeIcon);
+        return await CoreCourse.getModuleIconSrc(module.modname, module.modicon, mimetypeIcon);
     }
 
     /**

@@ -25,8 +25,6 @@ import { CoreViewerTextComponent } from '@features/viewer/components/text/text';
 import { CoreFileHelper } from '@services/file-helper';
 import { CoreDomUtils } from './dom';
 import { CoreText } from '@singletons/text';
-import { CoreUrl } from '@singletons/url';
-import { AlertButton } from '@ionic/angular';
 
 /**
  * Different type of errors the app can treat.
@@ -38,8 +36,6 @@ export type CoreTextErrorObject = {
     body?: string;
     debuginfo?: string;
     backtrace?: string;
-    title?: string;
-    buttons?: AlertButton[];
 };
 
 /*
@@ -153,39 +149,12 @@ export class CoreTextUtilsProvider {
     }
 
     /**
-     * Add some title to an error message.
-     *
-     * @param error Error message or object.
-     * @param title Title to add.
-     * @return Modified error.
-     */
-    addTitleToError(error: string | CoreError | CoreTextErrorObject | undefined | null, title: string): CoreTextErrorObject {
-        let improvedError: CoreTextErrorObject = {};
-
-        if (typeof error === 'string') {
-            improvedError.message = error;
-        } else if (error && 'message' in error) {
-            improvedError = error;
-        }
-
-        improvedError.title = improvedError.title || title;
-
-        return improvedError;
-    }
-
-    /**
      * Given an address as a string, return a URL to open the address in maps.
      *
      * @param address The address.
      * @return URL to view the address.
      */
     buildAddressURL(address: string): SafeUrl {
-        const parsedUrl = CoreUrl.parse(address);
-        if (parsedUrl?.protocol) {
-            // It's already a URL, don't convert it.
-            return DomSanitizer.bypassSecurityTrustUrl(address);
-        }
-
         return DomSanitizer.bypassSecurityTrustUrl((CoreApp.isAndroid() ? 'geo:0,0?q=' : 'http://maps.google.com?q=') +
                 encodeURIComponent(address));
     }
@@ -741,7 +710,7 @@ export class CoreTextUtilsProvider {
      * @returns Treated text.
      */
     replaceArguments(text: string, replacements: Record<string, string> = {}, encoding?: 'uri'): string {
-        let match: RegExpMatchArray | null = null;
+        let match;
 
         while ((match = text.match(/\{\{([^}]+)\}\}/))) {
             const argument = match[1].trim();
@@ -829,7 +798,7 @@ export class CoreTextUtilsProvider {
     /**
      * Replace @@PLUGINFILE@@ wildcards with the real URL in a text.
      *
-     * @param text to treat.
+     * @param Text to treat.
      * @param files Files to extract the pluginfile URL from. They need to have the URL in a url or fileurl attribute.
      * @return Treated text.
      */
@@ -847,10 +816,8 @@ export class CoreTextUtilsProvider {
     /**
      * Restore original draftfile URLs.
      *
-     * @param siteUrl Site URL.
-     * @param treatedText Treated text with replacements.
-     * @param originalText Original text.
-     * @param files List of files to search and replace.
+     * @param text Text to treat, including pluginfile URLs.
+     * @param replaceMap Map of the replacements that were done.
      * @return Treated text.
      */
     restoreDraftfileUrls(siteUrl: string, treatedText: string, originalText: string, files: CoreWSFile[]): string {
@@ -1055,6 +1022,7 @@ export class CoreTextUtilsProvider {
      *
      * @param title Title of the new state.
      * @param content Content of the text to be expanded.
+     * @param component Component to link the embedded files to.
      * @param options Options.
      * @return Promise resolved when the modal is displayed.
      */

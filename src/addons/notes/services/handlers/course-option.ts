@@ -19,7 +19,8 @@ import {
     CoreCourseOptionsHandler,
     CoreCourseOptionsHandlerData,
 } from '@features/course/services/course-options-delegate';
-import { CoreCourseAnyCourseData, CoreCourseUserAdminOrNavOptionIndexed } from '@features/courses/services/courses';
+import { CoreCourseUserAdminOrNavOptionIndexed } from '@features/courses/services/courses';
+import { CoreEnrolledCourseDataWithExtraInfoAndOptions } from '@features/courses/services/courses-helper';
 import { makeSingleton } from '@singletons';
 import { AddonNotes } from '../notes';
 
@@ -72,7 +73,7 @@ export class AddonNotesCourseOptionHandlerService implements CoreCourseOptionsHa
     /**
      * @inheritdoc
      */
-    async prefetch(course: CoreCourseAnyCourseData): Promise<void> {
+    async prefetch(course: CoreEnrolledCourseDataWithExtraInfoAndOptions): Promise<void> {
         await AddonNotes.getNotes(course.id, undefined, true);
     }
 

@@ -18,7 +18,6 @@ import { RouterModule, Routes } from '@angular/router';
 import { CoreSharedModule } from '@/core/shared.module';
 import { CoreLoginHasSitesGuard } from './guards/has-sites';
 import { CoreLoginComponentsModule } from './components/components.module';
-import { CoreLoginHelper } from './services/login-helper';
 
 const routes: Routes = [
     {
@@ -32,7 +31,7 @@ const routes: Routes = [
     },
     {
         path: 'credentials',
-        loadChildren: () => CoreLoginHelper.getCredentialsRouteModule(),
+        loadChildren: () => import('./pages/credentials/credentials.module').then( m => m.CoreLoginCredentialsPageModule),
     },
     {
         path: 'sites',
@@ -60,7 +59,7 @@ const routes: Routes = [
     },
     {
         path: 'reconnect',
-        loadChildren: () => CoreLoginHelper.getReconnectRouteModule(),
+        loadChildren: () => import('./pages/reconnect/reconnect.module').then( m => m.CoreLoginReconnectPageModule),
     },
 ];
 

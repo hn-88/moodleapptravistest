@@ -14,7 +14,7 @@
 
 import { Injectable } from '@angular/core';
 
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreFilepool } from '@services/filepool';
 import { CoreSites } from '@services/sites';
 import { CoreUtils } from '@services/utils/utils';
@@ -27,6 +27,7 @@ import { CoreStatusWithWarningsWSResponse, CoreWSExternalWarning } from '@servic
 import { CoreError } from '@classes/errors/error';
 import { USERS_TABLE_NAME, CoreUserDBRecord } from './database/user';
 import { CorePushNotifications } from '@features/pushnotifications/services/pushnotifications';
+import { CoreUserDelegateService, CoreUserUpdateHandlerData } from './user-delegate';
 
 const ROOT_CACHE_KEY = 'mmUser:';
 
@@ -38,21 +39,12 @@ declare module '@singletons/events' {
      * @see https://www.typescriptlang.org/docs/handbook/declaration-merging.html#module-augmentation
      */
     export interface CoreEventsData {
-        [USER_PROFILE_REFRESHED]: CoreUserProfileRefreshedData;
-        [USER_PROFILE_PICTURE_UPDATED]: CoreUserProfilePictureUpdatedData;
+        [CoreUserProvider.PROFILE_REFRESHED]: CoreUserProfileRefreshedData;
+        [CoreUserProvider.PROFILE_PICTURE_UPDATED]: CoreUserProfilePictureUpdatedData;
+        [CoreUserDelegateService.UPDATE_HANDLER_EVENT]: CoreUserUpdateHandlerData;
     }
 
 }
-
-/**
- * Profile picture updated event.
- */
-export const USER_PROFILE_REFRESHED = 'CoreUserProfileRefreshed';
-
-/**
- * Profile picture updated event.
- */
-export const USER_PROFILE_PICTURE_UPDATED = 'CoreUserProfilePictureUpdated';
 
 /**
  * Service to provide user functionalities.
@@ -61,6 +53,8 @@ export const USER_PROFILE_PICTURE_UPDATED = 'CoreUserProfilePictureUpdated';
 export class CoreUserProvider {
 
     static readonly PARTICIPANTS_LIST_LIMIT = 50; // Max of participants to retrieve in each WS call.
+    static readonly PROFILE_REFRESHED = 'CoreUserProfileRefreshed';
+    static readonly PROFILE_PICTURE_UPDATED = 'CoreUserProfilePictureUpdated';
 
     protected logger: CoreLogger;
 
@@ -137,11 +131,11 @@ export class CoreUserProvider {
 
         const result = await site.write<CoreUserUpdatePictureWSResponse>('core_user_update_picture', params);
 
-        if (!result.success || !result.profileimageurl) {
+        if (!result.success) {
             return Promise.reject(null);
         }
 
-        return result.profileimageurl;
+        return result.profileimageurl!;
     }
 
     /**
@@ -407,7 +401,7 @@ export class CoreUserProvider {
 
         const preference = await CoreUtils.ignoreErrors(CoreUserOffline.getPreference(name, siteId));
 
-        if (preference && !CoreNetwork.isOnline()) {
+        if (preference && !CoreApp.isOnline()) {
             // Offline, return stored value.
             return preference.value;
         }
@@ -452,7 +446,7 @@ export class CoreUserProvider {
             name,
         };
         const preSets: CoreSiteWSPreSets = {
-            cacheKey: this.getUserPreferenceCacheKey(name),
+            cacheKey: this.getUserPreferenceCacheKey(params.name!),
             updateFrequency: CoreSite.FREQUENCY_SOMETIMES,
         };
 
@@ -613,7 +607,7 @@ export class CoreUserProvider {
         const treated: Record<string, boolean> = {};
 
         await Promise.all(userIds.map(async (userId) => {
-            if (userId === null || !siteId) {
+            if (userId === null) {
                 return;
             }
 
@@ -630,7 +624,7 @@ export class CoreUserProvider {
                 const profile = await this.getProfile(userId, courseId, false, siteId);
 
                 if (profile.profileimageurl) {
-                    await CoreFilepool.addToQueueByUrl(siteId, profile.profileimageurl);
+                    await CoreFilepool.addToQueueByUrl(siteId!, profile.profileimageurl);
                 }
             } catch (error) {
                 this.logger.warn(`Ignore error when prefetching user ${userId}`, error);
@@ -658,7 +652,7 @@ export class CoreUserProvider {
         const promises = entries.map(async (entry) => {
             const imageUrl = <string> entry[propertyName];
 
-            if (!imageUrl || treated[imageUrl] || !siteId) {
+            if (!imageUrl || treated[imageUrl]) {
                 // It doesn't have an image or it has already been treated.
                 return;
             }
@@ -666,7 +660,7 @@ export class CoreUserProvider {
             treated[imageUrl] = true;
 
             try {
-                await CoreFilepool.addToQueueByUrl(siteId, imageUrl);
+                await CoreFilepool.addToQueueByUrl(siteId!, imageUrl);
             } catch (ex) {
                 this.logger.warn(`Ignore error when prefetching user avatar ${imageUrl}`, entry, ex);
             }
@@ -682,7 +676,7 @@ export class CoreUserProvider {
      * @param search The string to search.
      * @param searchAnywhere Whether to find a match anywhere or only at the beginning.
      * @param page Page to get.
-     * @param perPage Number of participants to get.
+     * @param limitNumber Number of participants to get.
      * @param siteId Site Id. If not defined, use current site.
      * @return Promise resolved when the participants are retrieved.
      * @since 3.8
@@ -766,7 +760,7 @@ export class CoreUserProvider {
     async setUserPreference(name: string, value: string, siteId?: string): Promise<void> {
         siteId = siteId || CoreSites.getCurrentSiteId();
 
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             // Offline, just update the preference.
             return CoreUserOffline.setPreference(name, value);
         }
@@ -846,6 +840,20 @@ export class CoreUserProvider {
 
 }
 export const CoreUser = makeSingleton(CoreUserProvider);
+
+declare module '@singletons/events' {
+
+    /**
+     * Augment CoreEventsData interface with events specific to this service.
+     *
+     * @see https://www.typescriptlang.org/docs/handbook/declaration-merging.html#module-augmentation
+     */
+    export interface CoreEventsData {
+        [CoreUserProvider.PROFILE_REFRESHED]: CoreUserProfileRefreshedData;
+        [CoreUserProvider.PROFILE_PICTURE_UPDATED]: CoreUserProfilePictureUpdatedData;
+    }
+
+}
 
 /**
  * Data passed to PROFILE_REFRESHED event.
@@ -1106,7 +1114,7 @@ type CoreUserGetUserPreferencesWSParams = {
 type CoreUserGetUserPreferencesWSResponse = {
     preferences: { // User custom fields (also known as user profile fields).
         name: string; // The name of the preference.
-        value: string | null; // The value of the preference.
+        value: string; // The value of the preference.
     }[];
     warnings?: CoreWSExternalWarning[];
 };

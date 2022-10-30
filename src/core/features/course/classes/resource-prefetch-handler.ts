@@ -14,7 +14,7 @@
 
 import { CoreNetworkError } from '@classes/errors/network-error';
 import { CoreFilterHelper } from '@features/filter/services/filter-helper';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreFilepool } from '@services/filepool';
 import { CoreSites } from '@services/sites';
 import { CoreWSFile } from '@services/ws';
@@ -57,7 +57,7 @@ export class CoreCourseResourcePrefetchHandlerBase extends CoreCourseModulePrefe
      * @return Promise resolved when all content is downloaded.
      */
     async downloadOrPrefetch(module: CoreCourseModuleData, courseId: number, prefetch?: boolean, dirPath?: string): Promise<void> {
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             // Cannot download in offline.
             throw new CoreNetworkError();
         }

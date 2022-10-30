@@ -56,7 +56,7 @@ export class CoreEditorOfflineProvider {
             const params = this.fixDraftPrimaryData(contextLevel, contextInstanceId, elementId, extraParams);
 
             await db.deleteRecords(DRAFT_TABLE, params);
-        } catch {
+        } catch (error) {
             // Ignore errors, probably no draft stored.
         }
     }
@@ -149,12 +149,12 @@ export class CoreEditorOfflineProvider {
                 }
 
                 await db.insertRecord(DRAFT_TABLE, entry);
-            } catch {
+            } catch (error) {
                 // Ignore errors saving the draft. It shouldn't happen.
             }
 
             return entry;
-        } catch {
+        } catch (error) {
             // No draft stored. Store an empty draft to save the pageinstance.
             await this.saveDraft(
                 contextLevel,

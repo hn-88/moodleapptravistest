@@ -57,7 +57,7 @@ export class AddonCourseCompletionUserHandlerService implements CoreUserProfileH
      * @inheritdoc
      */
     async isEnabledForUser(user: CoreUserProfile, context: CoreUserDelegateContext,  contextId: number): Promise<boolean> {
-        return AddonCourseCompletion.isPluginViewEnabledForUser(contextId, user.id);
+        return await AddonCourseCompletion.isPluginViewEnabledForUser(contextId, user.id);
     }
 
     /**

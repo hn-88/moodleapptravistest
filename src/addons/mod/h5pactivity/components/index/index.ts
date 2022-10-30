@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Component, Optional, OnInit, OnDestroy, Output, EventEmitter } from '@angular/core';
+import { Component, Optional, OnInit, OnDestroy } from '@angular/core';
 import { IonContent } from '@ionic/angular';
 
 import { CoreConstants } from '@/core/constants';
@@ -24,7 +24,7 @@ import { CoreH5PHelper } from '@features/h5p/classes/helper';
 import { CoreH5P } from '@features/h5p/services/h5p';
 import { CoreXAPIOffline } from '@features/xapi/services/offline';
 import { CoreXAPI } from '@features/xapi/services/xapi';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreFilepool } from '@services/filepool';
 import { CoreNavigator } from '@services/navigator';
 import { CoreSites } from '@services/sites';
@@ -54,8 +54,6 @@ import { AddonModH5PActivityModuleHandlerService } from '../../services/handlers
     templateUrl: 'addon-mod-h5pactivity-index.html',
 })
 export class AddonModH5PActivityIndexComponent extends CoreCourseModuleMainActivityComponent implements OnInit, OnDestroy {
-
-    @Output() onActivityFinish = new EventEmitter<boolean>();
 
     component = AddonModH5PActivityProvider.COMPONENT;
     moduleName = 'h5pactivity';
@@ -98,7 +96,7 @@ export class AddonModH5PActivityIndexComponent extends CoreCourseModuleMainActiv
         this.siteCanDownload = this.site.canDownloadFiles() && !CoreH5P.isOfflineDisabledInSite();
 
         // Listen for messages from the iframe.
-        this.messageListenerFunction = (event) => this.onIframeMessage(event);
+        this.messageListenerFunction = this.onIframeMessage.bind(this);
         window.addEventListener('message', this.messageListenerFunction);
     }
 
@@ -151,7 +149,7 @@ export class AddonModH5PActivityIndexComponent extends CoreCourseModuleMainActiv
             // Cannot download the file or already downloaded, play the package directly.
             this.play();
 
-        } else if ((this.state == CoreConstants.NOT_DOWNLOADED || this.state == CoreConstants.OUTDATED) && CoreNetwork.isOnline() &&
+        } else if ((this.state == CoreConstants.NOT_DOWNLOADED || this.state == CoreConstants.OUTDATED) && CoreApp.isOnline() &&
                     this.deployedFile?.filesize && CoreFilepool.shouldDownload(this.deployedFile.filesize)) {
             // Package is small, download it automatically. Don't block this function for this.
             this.downloadAutomatically();
@@ -282,7 +280,7 @@ export class AddonModH5PActivityIndexComponent extends CoreCourseModuleMainActiv
             return;
         }
 
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             CoreDomUtils.showErrorModal('core.networkerrormsg', true);
 
             return;
@@ -459,14 +457,13 @@ export class AddonModH5PActivityIndexComponent extends CoreCourseModuleMainActiv
                 try {
                     // Invalidate attempts.
                     await AddonModH5PActivity.invalidateUserAttempts(this.h5pActivity.id, undefined, this.siteId);
-                } catch {
+                } catch (error) {
                     // Ignore errors.
                 }
 
                 // Check if the H5P has ended. Final statements don't include a subContentId.
                 const hasEnded = data.statements.some(statement => !statement.object.id.includes('subContentId='));
                 if (hasEnded) {
-                    this.onActivityFinish.emit(hasEnded);
                     this.checkCompletion();
                 }
             }
@@ -518,7 +515,7 @@ export class AddonModH5PActivityIndexComponent extends CoreCourseModuleMainActiv
             };
         }
 
-        return AddonModH5PActivitySync.syncActivity(this.h5pActivity.context, this.site.getId());
+        return await AddonModH5PActivitySync.syncActivity(this.h5pActivity.context, this.site.getId());
     }
 
     /**

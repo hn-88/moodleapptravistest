@@ -23,9 +23,6 @@
             </ion-item>
         </core-course-module-info>
 
-        <core-group-selector *ngIf="supportsChangeGroup" [groupInfo]="groupInfo" [(selected)]="groupId" (selectedChange)="groupChanged()">
-        </core-group-selector>
-
         <!-- Cut-off date or due date message -->
         <ion-card class="core-info-card" *ngIf="availabilityMessage">
             <ion-item>
@@ -39,17 +36,6 @@
             <ion-item>
                 <ion-icon name="fas-info-circle" slot="start" aria-hidden="true"></ion-icon>
                 <ion-label>{{ 'addon.mod_forum.qandanotify' | translate }}</ion-label>
-            </ion-item>
-        </ion-card>
-
-        <!-- Cannot add discussion to group messages. -->
-        <ion-card class="core-info-card" *ngIf="usesGroups && canAddDiscussion && !canAddDiscussionToGroup">
-            <ion-item>
-                <ion-icon name="fas-info-circle" slot="start" aria-hidden="true"></ion-icon>
-                <ion-label>
-                    <span *ngIf="groupId <= 0">{{ 'addon.mod_forum.cannotadddiscussionall' | translate }}</span>
-                    <span *ngIf="groupId > 0">{{ 'addon.mod_forum.cannotadddiscussion' | translate }}</span>
-                </ion-label>
             </ion-item>
         </ion-card>
 
@@ -142,7 +128,7 @@
     <core-course-module-navigation collapsible-footer [hidden]="showLoading" [courseId]="courseId" [currentModuleId]="module.id">
     </core-course-module-navigation>
 
-    <ion-fab slot="fixed" core-fab vertical="bottom" horizontal="end" *ngIf="canAddDiscussionToGroup">
+    <ion-fab slot="fixed" core-fab vertical="bottom" horizontal="end" *ngIf="forum && canAddDiscussion">
         <ion-fab-button (click)="openNewDiscussion()" [attr.aria-label]="addDiscussionText">
             <ion-icon name="fas-plus" aria-hidden="true"></ion-icon>
             <span class="sr-only">{{ addDiscussionText }}</span>

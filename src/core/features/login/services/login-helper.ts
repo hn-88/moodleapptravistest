@@ -784,12 +784,10 @@ export class CoreLoginHelperProvider {
     /**
      * Function that should be called when password change is forced. Reserved for core use.
      *
-     * @param siteId The site ID. Undefined for current site.
+     * @param siteId The site ID.
      */
-    async passwordChangeForced(siteId?: string): Promise<void> {
+    async passwordChangeForced(siteId: string): Promise<void> {
         const currentSite = CoreSites.getCurrentSite();
-        siteId = siteId ?? currentSite?.getId();
-
         if (!currentSite || siteId !== currentSite.getId()) {
             return; // Site that triggered the event is not current site.
         }
@@ -1290,27 +1288,34 @@ export class CoreLoginHelperProvider {
      *
      * @return Promise resolved if the user accepts to scan QR.
      */
-    async showScanQRInstructions(): Promise<void> {
-        await new Promise<void>((resolve, reject) => {
-            CoreDomUtils.showAlertWithOptions({
-                header: Translate.instant('core.login.faqwhereisqrcode'),
-                message: Translate.instant(
-                    'core.login.faqwhereisqrcodeanswer',
-                    { $image: CoreLoginHelperProvider.FAQ_QRCODE_IMAGE_HTML },
-                ),
-                buttons: [
-                    {
-                        text: Translate.instant('core.cancel'),
-                        role: 'cancel',
-                        handler: () => reject(new CoreCanceledError()),
+    showScanQRInstructions(): Promise<void> {
+        const deferred = CoreUtils.promiseDefer<void>();
+
+        // Show some instructions first.
+        CoreDomUtils.showAlertWithOptions({
+            header: Translate.instant('core.login.faqwhereisqrcode'),
+            message: Translate.instant(
+                'core.login.faqwhereisqrcodeanswer',
+                { $image: CoreLoginHelperProvider.FAQ_QRCODE_IMAGE_HTML },
+            ),
+            buttons: [
+                {
+                    text: Translate.instant('core.cancel'),
+                    role: 'cancel',
+                    handler: (): void => {
+                        deferred.reject(new CoreCanceledError());
                     },
-                    {
-                        text: Translate.instant('core.next'),
-                        handler: () => resolve(),
+                },
+                {
+                    text: Translate.instant('core.next'),
+                    handler: (): void => {
+                        deferred.resolve();
                     },
-                ],
-            });
+                },
+            ],
         });
+
+        return deferred.promise;
     }
 
     /**
@@ -1430,33 +1435,6 @@ export class CoreLoginHelperProvider {
         }
     }
 
-    /**
-     * Get reconnect page route module.
-     *
-     * @returns Reconnect page route module.
-     */
-    async getReconnectRouteModule(): Promise<unknown> {
-        return import('@features/login/pages/reconnect/reconnect.module').then(m => m.CoreLoginReconnectPageModule);
-    }
-
-    /**
-     * Get credentials page route module.
-     *
-     * @returns Credentials page route module.
-     */
-    async getCredentialsRouteModule(): Promise<unknown> {
-        return import('@features/login/pages/credentials/credentials.module').then(m => m.CoreLoginCredentialsPageModule);
-    }
-
-    /**
-     * Retrieve login methods.
-     *
-     * @returns Login methods found.
-     */
-    async getLoginMethods(): Promise<CoreLoginMethod[]> {
-        return [];
-    }
-
 }
 
 export const CoreLoginHelper = makeSingleton(CoreLoginHelperProvider);
@@ -1571,9 +1549,3 @@ export type CoreLoginSiteSelectorListMethod =
     'sitefinder'|
     'list'|
     '';
-
-export type CoreLoginMethod = {
-    name: string; // Name of the login method.
-    icon: string; // Icon of the provider.
-    action: () => unknown; // Action to execute on button click.
-};

@@ -14,7 +14,7 @@
 
 import { Injectable } from '@angular/core';
 import { Params } from '@angular/router';
-import moment from 'moment-timezone';
+import moment from 'moment';
 
 import { CoreSites, CoreSitesReadingStrategy } from '@services/sites';
 import {
@@ -27,7 +27,6 @@ import {
     CoreCourseModuleCompletionTracking,
     CoreCourseModuleCompletionStatus,
     CoreCourseGetContentsWSModule,
-    CoreCourseGetContentsWSModuleDate,
 } from './course';
 import { CoreConstants } from '@/core/constants';
 import { CoreLogger } from '@singletons/logger';
@@ -59,7 +58,7 @@ import {
 } from './module-prefetch-delegate';
 import { CoreFileSizeSum } from '@services/plugin-file-delegate';
 import { CoreFileHelper } from '@services/file-helper';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreSite } from '@classes/site';
 import { CoreFile } from '@services/file';
 import { CoreUrlUtils } from '@services/utils/url';
@@ -71,8 +70,6 @@ import { CoreSiteHome } from '@features/sitehome/services/sitehome';
 import { CoreNavigationOptions, CoreNavigator } from '@services/navigator';
 import { CoreSiteHomeHomeHandlerService } from '@features/sitehome/services/handlers/sitehome-home';
 import { CoreStatusWithWarningsWSResponse } from '@services/ws';
-import { CoreCourseWithImageAndColor } from '@features/courses/services/courses-helper';
-import { CoreCourseSummaryPage } from '../pages/course-summary/course-summary';
 
 /**
  * Prefetch info of a module.
@@ -724,7 +721,7 @@ export class CoreCourseHelperProvider {
         const mainFile = files[0];
 
         if (!CoreFileHelper.isOpenableInApp(mainFile)) {
-            await CoreFileHelper.showConfirmOpenUnsupportedFile(false, mainFile);
+            await CoreFileHelper.showConfirmOpenUnsupportedFile();
         }
 
         const site = await CoreSites.getSite(siteId);
@@ -801,7 +798,7 @@ export class CoreCourseHelperProvider {
         files?: CoreCourseModuleContentFile[],
         options: CoreUtilsOpenFileOptions = {},
     ): Promise<void> {
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             // Not online, get the offline file. It will fail if not found.
             let path: string | undefined;
             try {
@@ -953,7 +950,7 @@ export class CoreCourseHelperProvider {
     ): Promise<string> {
         siteId = siteId || CoreSites.getCurrentSiteId();
 
-        const isOnline = CoreNetwork.isOnline();
+        const isOnline = CoreApp.isOnline();
         const mainFile = files[0];
         const timemodified = mainFile.timemodified || 0;
 
@@ -972,7 +969,7 @@ export class CoreCourseHelperProvider {
         }
 
         // Start the download if in wifi, but return the URL right away so the file is opened.
-        if (CoreNetwork.isWifi()) {
+        if (CoreApp.isWifi()) {
             this.downloadModule(module, courseId, component, componentId, files, siteId);
         }
 
@@ -1020,10 +1017,10 @@ export class CoreCourseHelperProvider {
         if (prefetchHandler) {
             // Use the prefetch handler to download the module.
             if (prefetchHandler.download) {
-                return prefetchHandler.download(module, courseId);
+                return await prefetchHandler.download(module, courseId);
             }
 
-            return prefetchHandler.prefetch(module, courseId, true);
+            return await prefetchHandler.prefetch(module, courseId, true);
         }
 
         // There's no prefetch handler for the module, just download the files.
@@ -2036,30 +2033,6 @@ export class CoreCourseHelperProvider {
         }
     }
 
-    /**
-     * Retrieves course summary page module.
-     *
-     * @returns Course summary page module.
-     */
-    async getCourseSummaryRouteModule(): Promise<unknown> {
-        return import('../pages/course-summary/course-summary.module').then(m => m.CoreCourseSummaryPageModule);
-    }
-
-    /**
-     * Open course summary in side modal.
-     *
-     * @param course Course selected
-     */
-    openCourseSummary(course: CoreCourseWithImageAndColor & CoreCourseAnyCourseData): void {
-        CoreDomUtils.openSideModal<void>({
-            component: CoreCourseSummaryPage,
-            componentProps: {
-                courseId: course.id,
-                course: course,
-            },
-        });
-    }
-
 }
 
 export const CoreCourseHelper = makeSingleton(CoreCourseHelperProvider);
@@ -2086,20 +2059,12 @@ export type CoreCourseSectionWithStatus = CoreCourseSection & {
 /**
  * Module with calculated data.
  */
-export type CoreCourseModuleData = Omit<CoreCourseGetContentsWSModule, 'completiondata'|'dates'> & {
+export type CoreCourseModuleData = Omit<CoreCourseGetContentsWSModule, 'completiondata'> & {
     course: number; // The course id.
     isStealth?: boolean;
     handlerData?: CoreCourseModuleHandlerData;
     completiondata?: CoreCourseModuleCompletionData;
     section: number;
-    dates?: CoreCourseModuleDate[];
-};
-
-/**
- * Module date with calculated data.
- */
-export type CoreCourseModuleDate = CoreCourseGetContentsWSModuleDate & {
-    readableTime: string;
 };
 
 /**

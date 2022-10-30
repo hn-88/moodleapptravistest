@@ -16,7 +16,6 @@ import { CoreConfig } from '@services/config';
 import { CoreFilepool } from '@services/filepool';
 import { CoreLang } from '@services/lang';
 import { CoreLocalNotifications } from '@services/local-notifications';
-import { CoreNetwork } from '@services/network';
 import { CoreSites } from '@services/sites';
 import { CoreUpdateManager } from '@services/update-manager';
 import { CoreTimeUtils } from '@services/utils/time';
@@ -28,7 +27,6 @@ export default async function(): Promise<void> {
         CoreSites.initialize(),
         CoreLang.initialize(),
         CoreLocalNotifications.initialize(),
-        CoreNetwork.initialize(),
         CoreUpdateManager.initialize(),
         CoreTimeUtils.initialize(),
     ]);

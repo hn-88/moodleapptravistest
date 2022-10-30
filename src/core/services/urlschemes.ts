@@ -57,8 +57,8 @@ export class CoreCustomURLSchemesProvider {
 
         const currentSite = CoreSites.getCurrentSite();
 
-        if (!currentSite || currentSite.getToken() != data.token || currentSite.isLoggedOut()) {
-            // Token belongs to a different site or site is logged out, create it. It doesn't matter if it already exists.
+        if (!currentSite || currentSite.getToken() != data.token) {
+            // Token belongs to a different site, create it. It doesn't matter if it already exists.
 
             if (!data.siteUrl.match(/^https?:\/\//)) {
                 // URL doesn't have a protocol and it's required to be able to create the site. Check which one to use.
@@ -108,7 +108,7 @@ export class CoreCustomURLSchemesProvider {
 
         // Some platforms like Windows add a slash at the end. Remove it.
         // Some sites add a # at the end of the URL. If it's there, remove it.
-        url = url.replace(/\/?(#.*)?\/?$/, '');
+        url = url.replace(/\/?#?\/?$/, '');
 
         const modal = await CoreDomUtils.showModalLoading();
         let data: CoreCustomURLSchemesParams;

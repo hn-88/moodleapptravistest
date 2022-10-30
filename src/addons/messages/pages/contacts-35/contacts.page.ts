@@ -25,7 +25,7 @@ import {
 import { CoreDomUtils } from '@services/utils/dom';
 import { CoreApp } from '@services/app';
 import { CoreEventObserver, CoreEvents } from '@singletons/events';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Params } from '@angular/router';
 import { Translate } from '@singletons';
 import { CoreScreen } from '@services/screen';
 import { CoreNavigator } from '@services/navigator';
@@ -241,10 +241,15 @@ export class AddonMessagesContacts35Page implements OnInit, OnDestroy {
     gotoDiscussion(discussionUserId: number): void {
         this.discussionUserId = discussionUserId;
 
-        const path = CoreNavigator.getRelativePathToParent('/messages/contacts-35') + `discussion/user/${discussionUserId}`;
+        const params: Params = {
+            userId: discussionUserId,
+        };
+
+        const splitViewLoaded = CoreNavigator.isCurrentPathInTablet('**/messages/contacts-35/discussion');
+        const path = (splitViewLoaded ? '../' : '') + 'discussion';
 
         // @todo Check why this is failing on ngInit.
-        CoreNavigator.navigate(path);
+        CoreNavigator.navigate(path, { params });
     }
 
     /**

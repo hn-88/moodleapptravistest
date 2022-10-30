@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { Injectable } from '@angular/core';
-import { ActivatedRoute, ActivatedRouteSnapshot, NavigationEnd, Params } from '@angular/router';
+import { ActivatedRoute, ActivatedRouteSnapshot, Params } from '@angular/router';
 
 import { NavigationOptions } from '@ionic/angular/providers/nav-controller';
 
@@ -27,11 +27,9 @@ import { CoreUrlUtils } from '@services/utils/url';
 import { CoreTextUtils } from '@services/utils/text';
 import { makeSingleton, NavController, Router } from '@singletons';
 import { CoreScreen } from './screen';
+import { CoreApp } from './app';
 import { CoreError } from '@classes/errors/error';
 import { CoreMainMenuDelegate } from '@features/mainmenu/services/mainmenu-delegate';
-import { CorePlatform } from '@services/platform';
-import { filter } from 'rxjs/operators';
-import { CorePromisedValue } from '@classes/promised-value';
 
 /**
  * Redirect payload.
@@ -320,7 +318,7 @@ export class CoreNavigatorService {
         // Remove the parameter from our map if it's in there.
         delete this.storedParams[value];
 
-        if (!CorePlatform.isMobile() && !storedParam) {
+        if (!CoreApp.isMobile() && !storedParam) {
             // Try to retrieve the param from local storage in browser.
             const storageParam = localStorage.getItem(value);
             if (storageParam) {
@@ -564,13 +562,6 @@ export class CoreNavigatorService {
             return this.navigate(`/main/${path}`, options);
         }
 
-        if (this.isCurrent('/main')) {
-            // Main menu is loaded, but no tab selected yet. Wait for a tab to be loaded.
-            await this.waitForMainMenuTab();
-
-            return this.navigate(`/main/${this.getCurrentMainMenuTab()}/${path}`, options);
-        }
-
         // Open the path within in main menu.
         return this.navigate('/main', {
             ...options,
@@ -613,7 +604,7 @@ export class CoreNavigatorService {
             this.storedParams[id] = value;
             queryParams[name] = id;
 
-            if (!CorePlatform.isMobile()) {
+            if (!CoreApp.isMobile()) {
                 // In browser, save the param in local storage to be able to retrieve it if the app is refreshed.
                 localStorage.setItem(id, JSON.stringify(value));
             }
@@ -674,53 +665,6 @@ export class CoreNavigatorService {
      */
     currentRouteCanBlockLeave(): boolean {
         return !!this.getCurrentRoute().snapshot.routeConfig?.canDeactivate?.length;
-    }
-
-    /**
-     * Wait for a main menu tab route to be loaded.
-     *
-     * @return Promise resolved when the route is loaded.
-     */
-    protected waitForMainMenuTab(): Promise<void> {
-        if (this.getCurrentMainMenuTab()) {
-            return Promise.resolve();
-        }
-
-        const promise = new CorePromisedValue<void>();
-
-        const navSubscription = Router.events
-            .pipe(filter(event => event instanceof NavigationEnd))
-            .subscribe(() => {
-                if (this.getCurrentMainMenuTab()) {
-                    navSubscription?.unsubscribe();
-                    promise.resolve();
-                }
-            });
-
-        return promise;
-    }
-
-    /**
-     * Get the relative path to a parent path.
-     * E.g. if parent path is '/foo' and current path is '/foo/bar/baz' it will return '../../'.
-     *
-     * @param parentPath Parent path.
-     * @return Relative path to the parent, empty if same path or parent path not found.
-     * @todo If messaging is refactored to use list managers, this function might not be needed anymore.
-     */
-    getRelativePathToParent(parentPath: string): string {
-        // Add an ending slash to avoid collisions with other routes (e.g. /foo and /foobar).
-        parentPath = CoreTextUtils.addEndingSlash(parentPath);
-
-        const path = this.getCurrentPath();
-        const parentRouteIndex = path.indexOf(parentPath);
-        if (parentRouteIndex === -1) {
-            return '';
-        }
-
-        const depth = (path.substring(parentRouteIndex + parentPath.length - 1).match(/\//g) ?? []).length;
-
-        return '../'.repeat(depth);
     }
 
 }

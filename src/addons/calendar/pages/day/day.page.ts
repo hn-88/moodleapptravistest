@@ -14,7 +14,7 @@
 
 import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { IonRefresher } from '@ionic/angular';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreEventObserver, CoreEvents } from '@singletons/events';
 import { CoreSites } from '@services/sites';
 import { CoreDomUtils } from '@services/utils/dom';
@@ -32,8 +32,8 @@ import { AddonCalendarSync, AddonCalendarSyncProvider } from '../../services/cal
 import { CoreCategoryData, CoreCourses, CoreEnrolledCourseData } from '@features/courses/services/courses';
 import { CoreCoursesHelper } from '@features/courses/services/courses-helper';
 import { AddonCalendarFilterComponent } from '../../components/filter/filter';
-import moment from 'moment-timezone';
-import { NgZone } from '@singletons';
+import moment from 'moment';
+import { Network, NgZone } from '@singletons';
 import { CoreNavigator } from '@services/navigator';
 import { Params } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -45,8 +45,6 @@ import {
     CoreSwipeSlidesDynamicItem,
     CoreSwipeSlidesDynamicItemsManagerSource,
 } from '@classes/items-management/swipe-slides-dynamic-items-manager-source';
-import { CoreRoutedItemsManagerSourcesTracker } from '@classes/items-management/routed-items-manager-sources-tracker';
-import { AddonCalendarEventsSource } from '@addons/calendar/classes/events-source';
 
 /**
  * Page that displays the calendar events for a certain day.
@@ -180,10 +178,10 @@ export class AddonCalendarDayPage implements OnInit, OnDestroy {
         );
 
         // Refresh online status when changes.
-        this.onlineObserver = CoreNetwork.onChange().subscribe(() => {
+        this.onlineObserver = Network.onChange().subscribe(() => {
             // Execute the callback in the Angular zone, so change detection doesn't stop working.
             NgZone.run(() => {
-                this.isOnline = CoreNetwork.isOnline();
+                this.isOnline = CoreApp.isOnline();
             });
         });
     }
@@ -237,7 +235,7 @@ export class AddonCalendarDayPage implements OnInit, OnDestroy {
      */
     async fetchData(sync?: boolean): Promise<void> {
         this.syncIcon = CoreConstants.ICON_LOADING;
-        this.isOnline = CoreNetwork.isOnline();
+        this.isOnline = CoreApp.isOnline();
 
         if (sync) {
             await this.sync();
@@ -344,10 +342,9 @@ export class AddonCalendarDayPage implements OnInit, OnDestroy {
      * Navigate to a particular event.
      *
      * @param eventId Event to load.
-     * @param day Day.
      */
-    gotoEvent(eventId: number, day: PreloadedDay): void {
-        CoreNavigator.navigateToSitePath(`/calendar/event/${eventId}`, { params: { date: day.moment.format('MMDDY') } });
+    gotoEvent(eventId: number): void {
+        CoreNavigator.navigateToSitePath(`/calendar/event/${eventId}`);
     }
 
     /**
@@ -455,7 +452,6 @@ export class AddonCalendarDayPage implements OnInit, OnDestroy {
         this.manualSyncObserver?.off();
         this.onlineObserver?.unsubscribe();
         this.filterChangedObserver?.off();
-        this.manager?.getSource().forgetRelatedSources();
         this.manager?.destroy();
         this.managerUnsubscribe && this.managerUnsubscribe();
     }
@@ -487,7 +483,6 @@ type PreloadedDay = DayBasicData & CoreSwipeSlidesDynamicItem & {
 class AddonCalendarDaySlidesItemsManagerSource extends CoreSwipeSlidesDynamicItemsManagerSource<PreloadedDay> {
 
     courses: Partial<CoreEnrolledCourseData>[] = [];
-    eventsSources: Set<AddonCalendarEventsSource> = new Set();
     // Offline events classified in month & day.
     offlineEvents: Record<string, Record<number, AddonCalendarEventToDisplay[]>> = {};
     offlineEditedEventsIds: number[] = []; // IDs of events edited in offline.
@@ -538,8 +533,6 @@ class AddonCalendarDaySlidesItemsManagerSource extends CoreSwipeSlidesDynamicIte
      */
     filterEvents(day: PreloadedDay, filter: AddonCalendarFilter): void {
         day.filteredEvents = AddonCalendarHelper.getFilteredEvents(day.events || [], filter, this.categories || {});
-
-        this.rememberEventsList(day);
     }
 
     /**
@@ -669,10 +662,12 @@ class AddonCalendarDaySlidesItemsManagerSource extends CoreSwipeSlidesDynamicIte
         try {
             // Don't pass courseId and categoryId, we'll filter them locally.
             result = await AddonCalendar.getDayEvents(day.moment.year(), day.moment.month() + 1, day.moment.date());
-            preloadedDay.onlineEvents = result.events.map((event) => AddonCalendarHelper.formatEventData(event));
+            preloadedDay.onlineEvents = await Promise.all(
+                result.events.map((event) => AddonCalendarHelper.formatEventData(event)),
+            );
         } catch (error) {
             // Allow navigating to non-cached days in offline (behave as if using emergency cache).
-            if (CoreNetwork.isOnline()) {
+            if (CoreApp.isOnline()) {
                 throw error;
             }
         }
@@ -819,36 +814,6 @@ class AddonCalendarDaySlidesItemsManagerSource extends CoreSwipeSlidesDynamicIte
         } else {
             this.deletedEvents?.delete(eventId);
         }
-    }
-
-    /**
-     * Forget other sources that where created whilst using this one.
-     */
-    forgetRelatedSources(): void {
-        for (const source of this.eventsSources) {
-            CoreRoutedItemsManagerSourcesTracker.removeReference(source, this);
-        }
-    }
-
-    /**
-     * Remember the list of events in a day to be used in a different context.
-     *
-     * @param day Day containing the events list.
-     */
-    private async rememberEventsList(day: PreloadedDay): Promise<void> {
-        const source = CoreRoutedItemsManagerSourcesTracker.getOrCreateSource(AddonCalendarEventsSource, [
-            day.moment.format('MMDDY'),
-        ]);
-
-        if (!this.eventsSources.has(source)) {
-            this.eventsSources.add(source);
-
-            CoreRoutedItemsManagerSourcesTracker.addReference(source, this);
-        }
-
-        source.setEvents(day.filteredEvents ?? []);
-
-        await source.reload();
     }
 
 }

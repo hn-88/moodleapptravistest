@@ -21,7 +21,8 @@ import {
 } from '@features/course/services/course-options-delegate';
 import { makeSingleton } from '@singletons';
 import { AddonCompetency } from '../competency';
-import { CoreCourseAnyCourseData, CoreCourseUserAdminOrNavOptionIndexed } from '@features/courses/services/courses';
+import { CoreCourseUserAdminOrNavOptionIndexed } from '@features/courses/services/courses';
+import { CoreEnrolledCourseDataWithExtraInfoAndOptions } from '@features/courses/services/courses-helper';
 import { CoreFilterHelper } from '@features/filter/services/filter-helper';
 import { ContextLevel } from '@/core/constants';
 import { ADDON_COMPETENCY_COMPETENCIES_PAGE } from '@addons/competency/competency.module';
@@ -93,7 +94,7 @@ export class AddonCompetencyCourseOptionHandlerService implements CoreCourseOpti
     /**
      * @inheritdoc
      */
-    async prefetch(course: CoreCourseAnyCourseData): Promise<void> {
+    async prefetch(course: CoreEnrolledCourseDataWithExtraInfoAndOptions): Promise<void> {
         // Get the competencies in the course.
         const competencies = await AddonCompetency.getCourseCompetencies(course.id, undefined, undefined, true);
 

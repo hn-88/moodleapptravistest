@@ -18,11 +18,10 @@ import { CoreDomUtils } from '@services/utils/dom';
 import { CoreUtils } from '@services/utils/utils';
 import { CoreTextUtils } from '@services/utils/text';
 import { CoreCourseBlock } from '../../course/services/course';
+import { IonRefresher } from '@ionic/angular';
 import { Params } from '@angular/router';
 import { ContextLevel } from '@/core/constants';
 import { CoreNavigationOptions } from '@services/navigator';
-import { AsyncComponent } from '@classes/async-component';
-import { CorePromisedValue } from '@classes/promised-value';
 
 /**
  * Template class to easily create components for blocks.
@@ -30,7 +29,7 @@ import { CorePromisedValue } from '@classes/promised-value';
 @Component({
     template: '',
 })
-export abstract class CoreBlockBaseComponent implements OnInit, ICoreBlockComponent, AsyncComponent {
+export abstract class CoreBlockBaseComponent implements OnInit {
 
     @Input() title!: string; // The block title.
     @Input() block!: CoreCourseBlock; // The block to render.
@@ -40,9 +39,8 @@ export abstract class CoreBlockBaseComponent implements OnInit, ICoreBlockCompon
     @Input() linkParams?: Params; // Link params to go when clicked.
     @Input() navOptions?: CoreNavigationOptions; // Navigation options.
 
-    loaded = false; // If false, the UI should display a loading.
+    loaded = false; // If the component has been loaded.
     protected fetchContentDefaultError = ''; // Default error to show when loading contents.
-    protected onReadyPromise = new CorePromisedValue<void>();
 
     protected logger: CoreLogger;
 
@@ -55,8 +53,10 @@ export abstract class CoreBlockBaseComponent implements OnInit, ICoreBlockCompon
      */
     async ngOnInit(): Promise<void> {
         if (this.block.configs && this.block.configs.length > 0) {
-            this.block.configs.forEach((config) => {
+            this.block.configs.map((config) => {
                 config.value = CoreTextUtils.parseJSON(config.value);
+
+                return config;
             });
 
             this.block.configsRecord = CoreUtils.arrayToObject(this.block.configs, 'name');
@@ -66,16 +66,29 @@ export abstract class CoreBlockBaseComponent implements OnInit, ICoreBlockCompon
     }
 
     /**
+     * Refresh the data.
+     *
+     * @param refresher Refresher.
+     * @param done Function to call when done.
+     * @param showErrors If show errors to the user of hide them.
+     * @return Promise resolved when done.
+     */
+    async doRefresh(refresher?: IonRefresher, done?: () => void, showErrors: boolean = false): Promise<void> {
+        if (this.loaded) {
+            return this.refreshContent(showErrors).finally(() => {
+                refresher?.complete();
+                done && done();
+            });
+        }
+    }
+
+    /**
      * Perform the refresh content function.
      *
-     * @param showLoading Whether to show loading.
+     * @param showErrors Wether to show errors to the user or hide them.
      * @return Resolved when done.
      */
-    protected async refreshContent(showLoading?: boolean): Promise<void> {
-        if (showLoading) {
-            this.loaded = false;
-        }
-
+    protected async refreshContent(showErrors: boolean = false): Promise<void> {
         // Wrap the call in a try/catch so the workflow isn't interrupted if an error occurs.
         try {
             await this.invalidateContent();
@@ -84,23 +97,30 @@ export abstract class CoreBlockBaseComponent implements OnInit, ICoreBlockCompon
             this.logger.error(ex);
         }
 
-        await this.loadContent();
+        await this.loadContent(true, showErrors);
     }
 
     /**
-     * @inheritdoc
+     * Perform the invalidate content function.
+     *
+     * @return Resolved when done.
      */
-    async invalidateContent(): Promise<void> {
+    protected async invalidateContent(): Promise<void> {
         return;
     }
 
     /**
      * Loads the component contents and shows the corresponding error.
+     *
+     * @param refresh Whether we're refreshing data.
+     * @param showErrors Wether to show errors to the user or hide them.
+     * @return Promise resolved when done.
      */
-    protected async loadContent(): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    protected async loadContent(refresh?: boolean, showErrors: boolean = false): Promise<void> {
         // Wrap the call in a try/catch so the workflow isn't interrupted if an error occurs.
         try {
-            await this.fetchContent();
+            await this.fetchContent(refresh);
         } catch (error) {
             // An error ocurred in the function, log the error and just resolve the promise so the workflow continues.
             this.logger.error(error);
@@ -110,50 +130,17 @@ export abstract class CoreBlockBaseComponent implements OnInit, ICoreBlockCompon
         }
 
         this.loaded = true;
-        this.onReadyPromise.resolve();
     }
 
     /**
      * Download the component contents.
      *
+     * @param refresh Whether we're refreshing data.
      * @return Promise resolved when done.
      */
-    protected async fetchContent(): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    protected async fetchContent(refresh: boolean = false): Promise<void> {
         return;
     }
-
-    /**
-     * Reload content without invalidating data.
-     *
-     * @return Promise resolved when done.
-     */
-    async reloadContent(): Promise<void> {
-        if (!this.loaded) {
-            // Content being loaded, don't do anything.
-            return;
-        }
-
-        this.loaded = false;
-        await this.loadContent();
-    }
-
-    /**
-     * @inheritdoc
-     */
-    async ready(): Promise<void> {
-        return await this.onReadyPromise;
-    }
-
-}
-
-/**
- * Interface for block components.
- */
-export interface ICoreBlockComponent {
-
-    /**
-     * Perform the invalidate content function.
-     */
-    invalidateContent(): Promise<void>;
 
 }

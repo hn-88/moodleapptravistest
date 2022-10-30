@@ -92,7 +92,7 @@ export class CoreMainMenuPage implements OnInit, OnDestroy {
     tabAction: CoreMainMenuRoleTab;
 
     constructor() {
-        this.backButtonFunction = (event) => this.backButtonClicked(event);
+        this.backButtonFunction = this.backButtonClicked.bind(this);
         this.tabAction = new CoreMainMenuRoleTab(this);
         this.logger = CoreLogger.getInstance('CoreMainMenuPage');
 
@@ -121,7 +121,7 @@ export class CoreMainMenuPage implements OnInit, OnDestroy {
             // Remove the handlers that should only appear in the More menu.
             this.allHandlers = handlers;
 
-            this.updateHandlers();
+            this.initHandlers();
         });
 
         this.badgeUpdateObserver = CoreEvents.on(CoreMainMenuProvider.MAIN_MENU_HANDLER_BADGE_UPDATED, (data) => {
@@ -131,7 +131,7 @@ export class CoreMainMenuPage implements OnInit, OnDestroy {
         });
 
         this.resizeListener = CoreDom.onWindowResize(() => {
-            this.updateHandlers();
+            this.initHandlers();
         });
         document.addEventListener('ionBackButton', this.backButtonFunction);
 
@@ -140,22 +140,21 @@ export class CoreMainMenuPage implements OnInit, OnDestroy {
             // Init handlers again once keyboard is closed since the resize event doesn't have the updated height.
             this.keyboardObserver = CoreEvents.on(CoreEvents.KEYBOARD_CHANGE, (kbHeight: number) => {
                 if (kbHeight === 0) {
-                    this.updateHandlers();
+                    this.initHandlers();
 
                     // If the device is slow it can take a bit more to update the window height. Retry in a few ms.
                     setTimeout(() => {
-                        this.updateHandlers();
+                        this.initHandlers();
                     }, 250);
                 }
             });
         }
-        CoreEvents.trigger(CoreEvents.MAIN_HOME_LOADED);
     }
 
     /**
-     * Update handlers on change (size or handlers).
+     * Init handlers on change (size or handlers).
      */
-    async updateHandlers(): Promise<void> {
+    async initHandlers(): Promise<void> {
         if (!this.allHandlers) {
             return;
         }
@@ -167,7 +166,6 @@ export class CoreMainMenuPage implements OnInit, OnDestroy {
             .slice(0, CoreMainMenu.getNumItems()); // Get main handlers.
 
         // Re-build the list of tabs. If a handler is already in the list, use existing object to prevent re-creating the tab.
-        const previousTabs = this.tabs.map(tab => tab.page);
         const newTabs: CoreMainMenuHandlerToDisplay[] = [];
 
         for (let i = 0; i < handlers.length; i++) {
@@ -190,12 +188,9 @@ export class CoreMainMenuPage implements OnInit, OnDestroy {
 
         this.updateMoreBadge();
 
-        const removedTabs = previousTabs.filter(page => !this.tabs.some(tab => tab.page === page));
-        const mainMenuTab = CoreNavigator.getCurrentMainMenuTab();
-
         this.loaded = CoreMainMenuDelegate.areHandlersLoaded();
 
-        if (this.loaded && (!mainMenuTab || removedTabs.includes(mainMenuTab))) {
+        if (this.loaded && !CoreNavigator.getCurrentMainMenuTab()) {
             // No tab selected, select the first one.
             await CoreUtils.nextTick();
 
@@ -204,7 +199,7 @@ export class CoreMainMenuPage implements OnInit, OnDestroy {
             this.logger.debug(`Select first tab: ${tabPage}.`, this.tabs);
 
             // Use navigate instead of mainTabs.select to be able to pass page params.
-            CoreNavigator.navigateToSitePath(tabPage, {
+            CoreNavigator.navigate(tabPage, {
                 params: {
                     urlToOpen: this.urlToOpen,
                     redirectPath: this.redirectPath,

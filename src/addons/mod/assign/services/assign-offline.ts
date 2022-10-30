@@ -353,7 +353,7 @@ export class AddonModAssignOfflineProvider {
             };
         }
 
-        return site.getDb().insertRecord(SUBMISSIONS_TABLE, submission);
+        return await site.getDb().insertRecord(SUBMISSIONS_TABLE, submission);
     }
 
     /**
@@ -393,7 +393,7 @@ export class AddonModAssignOfflineProvider {
             onlinetimemodified: timemodified,
         };
 
-        return site.getDb().insertRecord(SUBMISSIONS_TABLE, entry);
+        return await site.getDb().insertRecord(SUBMISSIONS_TABLE, entry);
     }
 
     /**
@@ -442,7 +442,7 @@ export class AddonModAssignOfflineProvider {
             timemodified: now,
         };
 
-        return site.getDb().insertRecord(SUBMISSIONS_GRADES_TABLE, entry);
+        return await site.getDb().insertRecord(SUBMISSIONS_GRADES_TABLE, entry);
     }
 
 }

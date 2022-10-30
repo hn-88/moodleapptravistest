@@ -15,8 +15,8 @@
 import { BehaviorSubject, Subject } from 'rxjs';
 import { CoreEvents } from '@singletons/events';
 import { CoreDelegate, CoreDelegateDisplayHandler, CoreDelegateToDisplay } from './delegate';
+import { CoreUtils } from '@services/utils/utils';
 import { CoreSites } from '@services/sites';
-import { CorePromisedValue } from '@classes/promised-value';
 
 /**
  * Superclass to help creating sorted delegates.
@@ -39,7 +39,7 @@ export class CoreSortedDelegate<
     constructor(delegateName: string) {
         super(delegateName, true);
 
-        CoreEvents.on(CoreEvents.LOGOUT, () => this.clearSortedHandlers());
+        CoreEvents.on(CoreEvents.LOGOUT, this.clearSortedHandlers.bind(this));
         CoreEvents.on(CoreEvents.SITE_POLICY_AGREED, (data) => {
             if (data.siteId === CoreSites.getCurrentSiteId()) {
                 // Clear loaded handlers when policy is agreed. The CoreDelegate class will load them again.
@@ -47,7 +47,7 @@ export class CoreSortedDelegate<
             }
         });
         // Clear loaded handlers on login, there could be an invalid list loaded when user reconnects after token expired.
-        CoreEvents.on(CoreEvents.LOGIN, () => this.clearSortedHandlers());
+        CoreEvents.on(CoreEvents.LOGIN, this.clearSortedHandlers.bind(this));
     }
 
     /**
@@ -96,17 +96,18 @@ export class CoreSortedDelegate<
             return this.sortedHandlers;
         }
 
-        const promisedHandlers = new CorePromisedValue<DisplayType[]>();
+        const deferred = CoreUtils.promiseDefer<DisplayType[]>();
+
         const subscription = this.getHandlersObservable().subscribe((handlers) => {
             if (this.loaded) {
                 subscription?.unsubscribe();
 
                 // Return main handlers.
-                promisedHandlers.resolve(handlers);
+                deferred.resolve(handlers);
             }
         });
 
-        return promisedHandlers;
+        return deferred.promise;
     }
 
     /**

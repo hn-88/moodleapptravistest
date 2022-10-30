@@ -15,7 +15,7 @@
 import { CoreConstants } from '@/core/constants';
 import { CoreNetworkError } from '@classes/errors/network-error';
 import { CoreFilterHelper } from '@features/filter/services/filter-helper';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreFilepool } from '@services/filepool';
 import { CoreSites } from '@services/sites';
 import { CoreCourse, CoreCourseAnyModuleData } from '../services/course';
@@ -65,23 +65,26 @@ export class CoreCourseActivityPrefetchHandlerBase extends CoreCourseModulePrefe
      * Prefetch the module, setting package status at start and finish.
      *
      * Example usage from a child instance:
-     *     return this.prefetchPackage(module, courseId, (siteId) => this.prefetchModule(module, otherParam, siteId), siteId);
+     *     return this.prefetchPackage(module, courseId, single, this.prefetchModule.bind(this, otherParam), siteId);
+     *
+     * Then the function "prefetchModule" will receive params:
+     *     prefetchModule(module, courseId, single, siteId, someParam, anotherParam)
      *
      * @param module Module.
      * @param courseId Course ID the module belongs to.
-     * @param downloadFn Function to perform the prefetch. It can return a string to be stored as the package "extra" data.
+     * @param downloadFn Function to perform the prefetch. Please check the documentation of prefetchFunction.
      * @param siteId Site ID. If not defined, current site.
      * @return Promise resolved when the module has been downloaded. Data returned is not reliable.
      */
     async prefetchPackage(
         module: CoreCourseAnyModuleData,
         courseId: number,
-        downloadFunction: (siteId: string) => Promise<string | void>,
+        downloadFunction: (siteId: string) => Promise<string>,
         siteId?: string,
     ): Promise<void> {
         siteId = siteId || CoreSites.getCurrentSiteId();
 
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             // Cannot prefetch in offline.
             throw new CoreNetworkError();
         }
@@ -101,14 +104,14 @@ export class CoreCourseActivityPrefetchHandlerBase extends CoreCourseModulePrefe
      *
      * @param module Module.
      * @param courseId Course ID the module belongs to.
-     * @param downloadFn Function to perform the prefetch. It can return a string to be stored as the package "extra" data.
+     * @param downloadFn Function to perform the prefetch. Please check the documentation of prefetchFunction.
      * @param siteId Site ID. If not defined, current site.
      * @return Promise resolved when the module has been downloaded. Data returned is not reliable.
      */
     protected async changeStatusAndPrefetch(
         module: CoreCourseAnyModuleData,
         courseId: number | undefined,
-        downloadFunction: (siteId: string) => Promise<string | void>,
+        downloadFunction: (siteId: string) => Promise<string>,
         siteId: string,
     ): Promise<void> {
         try {

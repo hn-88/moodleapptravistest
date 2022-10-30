@@ -14,7 +14,7 @@
 
 import { Injectable } from '@angular/core';
 import { makeSingleton, Translate } from '@singletons';
-import moment from 'moment-timezone';
+import * as moment from 'moment';
 import { AddonModChatMessage, AddonModChatSessionMessage } from './chat';
 
 const patternTo = new RegExp(/^To\s([^:]+):(.*)/);
@@ -66,9 +66,7 @@ export class AddonModChatHelperProvider {
         if (!formattedMessage.special && formattedMessage.message.match(patternTo)) {
             const matches = formattedMessage.message.match(patternTo);
 
-            formattedMessage.message = `<em>
-                <strong>${Translate.instant('addon.mod_chat.saidto')} </strong>
-                ${matches![1]}</em>: ${matches![2]}`;
+            formattedMessage.message = `<i><b>${Translate.instant('addon.mod_chat.saidto')} </b>${matches![1]}</i>: ${matches![2]}`;
         }
 
         formattedMessage.showUserData = this.showUserData(currentUserId, message, prevMessage);

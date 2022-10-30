@@ -29,7 +29,7 @@ import { IonSlides } from '@ionic/angular';
 import { BackButtonEvent } from '@ionic/core';
 import { Subscription } from 'rxjs';
 
-import { Translate } from '@singletons';
+import { Platform, Translate } from '@singletons';
 import { CoreSettingsHelper } from '@features/settings/services/settings-helper';
 import { CoreAriaRoleTab, CoreAriaRoleTabFindable } from './aria-role-tab';
 import { CoreEventObserver } from '@singletons/events';
@@ -39,7 +39,6 @@ import { CoreError } from './errors/error';
 import { CorePromisedValue } from './promised-value';
 import { AsyncComponent } from './async-component';
 import { CoreComponentsRegistry } from '@singletons/components-registry';
-import { CorePlatform } from '@services/platform';
 
 /**
  * Class to abstract some common code for tabs.
@@ -95,7 +94,7 @@ export class CoreTabsBaseComponent<T extends CoreTabBase> implements OnInit, Aft
     tabAction: CoreTabsRoleTab<T>;
 
     constructor(element: ElementRef) {
-        this.backButtonFunction = (event) => this.backButtonClicked(event);
+        this.backButtonFunction = this.backButtonClicked.bind(this);
 
         this.tabAction = new CoreTabsRoleTab(this);
 
@@ -106,12 +105,12 @@ export class CoreTabsBaseComponent<T extends CoreTabBase> implements OnInit, Aft
      * @inheritdoc
      */
     async ngOnInit(): Promise<void> {
-        this.direction = CorePlatform.isRTL ? 'rtl' : 'ltr';
+        this.direction = Platform.isRTL ? 'rtl' : 'ltr';
 
         // Change the side when the language changes.
         this.subscriptions.push(Translate.onLangChange.subscribe(() => {
             setTimeout(() => {
-                this.direction = CorePlatform.isRTL ? 'rtl' : 'ltr';
+                this.direction = Platform.isRTL ? 'rtl' : 'ltr';
             });
         }));
     }
@@ -569,7 +568,7 @@ export class CoreTabsBaseComponent<T extends CoreTabBase> implements OnInit, Aft
      * @inheritdoc
      */
     async ready(): Promise<void> {
-        return this.onReadyPromise;
+        return await this.onReadyPromise;
     }
 
     /**

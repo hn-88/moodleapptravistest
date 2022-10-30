@@ -163,6 +163,8 @@ export class CoreCoursesCourseListItemComponent implements OnInit, OnDestroy, On
 
     /**
      * Open a course.
+     *
+     * @param course The course to open.
      */
     openCourse(): void {
         if (this.isEnrolled) {
@@ -177,8 +179,6 @@ export class CoreCoursesCourseListItemComponent implements OnInit, OnDestroy, On
 
     /**
      * Initialize prefetch course.
-     *
-     * @param forceInit Force initialization of prefetch course info.
      */
     async initPrefetchCourse(forceInit = false): Promise<void> {
         if (!this.isEnrolled || !this.showDownload ||

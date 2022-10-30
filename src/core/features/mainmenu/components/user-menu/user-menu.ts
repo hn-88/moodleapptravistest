@@ -71,14 +71,7 @@ export class CoreMainMenuUserMenuComponent implements OnInit, OnDestroy {
 
         // Load the handlers.
         if (this.siteInfo) {
-            try {
-                this.user = await CoreUser.getProfile(this.siteInfo.userid);
-            } catch {
-                this.user = {
-                    id: this.siteInfo.userid,
-                    fullname: this.siteInfo.fullname,
-                };
-            }
+            this.user = await CoreUser.getProfile(this.siteInfo.userid);
 
             this.subscription = CoreUserDelegate.getProfileHandlersFor(this.user, CoreUserDelegateContext.USER_MENU)
                 .subscribe((handlers) => {

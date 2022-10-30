@@ -12,21 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { AddonLegacyNotificationsNotificationsSource } from '@addons/notifications/classes/legacy-notifications-source';
-import { AddonNotificationsNotificationsSource } from '@addons/notifications/classes/notifications-source';
 import { AddonNotificationsNotificationData } from '@addons/notifications/services/handlers/push-click';
+import { AddonNotifications } from '@addons/notifications/services/notifications';
 import {
     AddonNotificationsHelper,
     AddonNotificationsNotificationToRender,
 } from '@addons/notifications/services/notifications-helper';
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { ActivatedRouteSnapshot } from '@angular/router';
-import { CoreRoutedItemsManagerSourcesTracker } from '@classes/items-management/routed-items-manager-sources-tracker';
-import { CoreSwipeNavigationItemsManager } from '@classes/items-management/swipe-navigation-items-manager';
+import { Component, OnInit } from '@angular/core';
 import { CoreContentLinksAction, CoreContentLinksDelegate } from '@features/contentlinks/services/contentlinks-delegate';
 import { CoreNavigator } from '@services/navigator';
 import { CoreSites } from '@services/sites';
 import { CoreDomUtils } from '@services/utils/dom';
+import { CoreUtils } from '@services/utils/utils';
 
 /**
  * Page to render a notification.
@@ -36,9 +33,8 @@ import { CoreDomUtils } from '@services/utils/dom';
     templateUrl: 'notification.html',
     styleUrls: ['../../notifications.scss', 'notification.scss'],
 })
-export class AddonNotificationsNotificationPage implements OnInit, OnDestroy {
+export class AddonNotificationsNotificationPage implements OnInit {
 
-    notifications?: AddonNotificationSwipeItemsManager;
     subject = ''; // Notification subject.
     content = ''; // Notification content.
     userIdFrom = -1; // User ID who sent the notification.
@@ -62,12 +58,26 @@ export class AddonNotificationsNotificationPage implements OnInit, OnDestroy {
         let notification: AddonNotificationsNotification;
 
         try {
-            notification = this.getNotification();
+            notification = CoreNavigator.getRequiredRouteParam('notification');
         } catch (error) {
             CoreDomUtils.showErrorModal(error);
+
             CoreNavigator.back();
 
             return;
+        }
+
+        if (!('subject' in notification)) {
+            // Try to find the notification using the WebService, it contains a better message.
+            const notifId = Number(notification.savedmessageid);
+            const result = await CoreUtils.ignoreErrors(
+                AddonNotifications.getNotifications([], { siteId: notification.site }),
+            );
+
+            const foundNotification = result?.notifications.find(notif => notif.id === notifId);
+            if (foundNotification) {
+                notification = AddonNotificationsHelper.formatNotificationText(foundNotification);
+            }
         }
 
         if ('subject' in notification) {
@@ -85,6 +95,7 @@ export class AddonNotificationsNotificationPage implements OnInit, OnDestroy {
                 }
             }
             this.timecreated = notification.timecreated;
+
         } else {
             this.subject = notification.title || '';
             this.content = notification.message || '';
@@ -97,53 +108,6 @@ export class AddonNotificationsNotificationPage implements OnInit, OnDestroy {
         AddonNotificationsHelper.markNotificationAsRead(notification);
 
         this.loaded = true;
-    }
-
-    /**
-     * Get notification.
-     *
-     * @returns notification.
-     */
-    getNotification(): AddonNotificationsNotification {
-        const id = CoreNavigator.getRouteNumberParam('id');
-        const notification = id ? this.getNotificationById(id) : undefined;
-
-        return notification ?? CoreNavigator.getRequiredRouteParam('notification');
-    }
-
-    /**
-     * Obtain notification by passed id.
-     *
-     * @param notificationId Notification id.
-     * @return Found notification.
-     */
-    getNotificationById(notificationId: number): AddonNotificationsNotification | undefined {
-        const source = CoreRoutedItemsManagerSourcesTracker.getOrCreateSource(
-            CoreSites.getRequiredCurrentSite().isVersionGreaterEqualThan('4.0')
-                ? AddonNotificationsNotificationsSource
-                : AddonLegacyNotificationsNotificationsSource,
-            [],
-        );
-        const notification = source.getItems()?.find(({ id }) => id === notificationId);
-
-        if (!notification) {
-            return;
-        }
-
-        this.loadNotifications(source);
-
-        return notification;
-    }
-
-    /**
-     * Load notifications from source.
-     *
-     * @param source Notifications source
-     */
-    async loadNotifications(source: AddonNotificationsNotificationsSource): Promise<void> {
-        this.notifications = new AddonNotificationSwipeItemsManager(source);
-
-        await this.notifications.start();
     }
 
     /**
@@ -183,7 +147,7 @@ export class AddonNotificationsNotificationPage implements OnInit, OnDestroy {
             actions.push({
                 message: 'core.view',
                 icon: 'fas-eye',
-                action: (siteId) => this.openInBrowser(siteId),
+                action: this.openInBrowser.bind(this),
             });
         }
 
@@ -205,27 +169,6 @@ export class AddonNotificationsNotificationPage implements OnInit, OnDestroy {
         const site = await CoreSites.getSite(siteId);
 
         site.openInBrowserWithAutoLogin(url);
-    }
-
-    /**
-     * @inheritdoc
-     */
-    ngOnDestroy(): void {
-        this.notifications?.destroy();
-    }
-
-}
-
-/**
- * Helper to manage swiping within a collection of notifications.
- */
-class AddonNotificationSwipeItemsManager extends CoreSwipeNavigationItemsManager {
-
-    /**
-     * @inheritdoc
-     */
-    protected getSelectedItemPathFromRoute(route: ActivatedRouteSnapshot): string | null {
-        return route.params.id;
     }
 
 }

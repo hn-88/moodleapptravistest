@@ -18,12 +18,13 @@ import { CoreCourseActivitySyncBaseProvider } from '@features/course/classes/act
 import { CoreCourseLogHelper } from '@features/course/services/log-helper';
 import { CoreFileUploader } from '@features/fileuploader/services/fileuploader';
 import { CoreRatingSync } from '@features/rating/services/rating-sync';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreGroups } from '@services/groups';
 import { CoreSites } from '@services/sites';
 import { CoreSync } from '@services/sync';
 import { CoreUtils } from '@services/utils/utils';
 import { makeSingleton, Translate } from '@singletons';
+import { CoreArray } from '@singletons/array';
 import { CoreEvents } from '@singletons/events';
 import {
     AddonModForum,
@@ -71,7 +72,7 @@ export class AddonModForumSyncProvider extends CoreCourseActivitySyncBaseProvide
      * @return Promise resolved if sync is successful, rejected if sync fails.
      */
     async syncAllForums(siteId?: string, force?: boolean): Promise<void> {
-        await this.syncOnSites('all forums', (siteId) => this.syncAllForumsFunc(!!force, siteId), siteId);
+        await this.syncOnSites('all forums', this.syncAllForumsFunc.bind(this, !!force), siteId);
     }
 
     /**
@@ -89,7 +90,7 @@ export class AddonModForumSyncProvider extends CoreCourseActivitySyncBaseProvide
             // Do not sync same forum twice.
             const syncedForumIds: number[] = [];
             const promises = discussions.map(async discussion => {
-                if (syncedForumIds.includes(discussion.forumid)) {
+                if (CoreArray.contains(syncedForumIds, discussion.forumid)) {
                     return;
                 }
 
@@ -122,11 +123,9 @@ export class AddonModForumSyncProvider extends CoreCourseActivitySyncBaseProvide
             // Do not sync same discussion twice.
             const syncedDiscussionIds: number[] = [];
             const promises = replies.map(async reply => {
-                if (syncedDiscussionIds.includes(reply.discussionid)) {
+                if (CoreArray.contains(syncedDiscussionIds, reply.discussionid)) {
                     return;
                 }
-
-                syncedDiscussionIds.push(reply.discussionid);
 
                 const result = force
                     ? await this.syncDiscussionReplies(reply.discussionid, reply.userid, siteId)
@@ -232,7 +231,7 @@ export class AddonModForumSyncProvider extends CoreCourseActivitySyncBaseProvide
                 [] as AddonModForumOfflineDiscussion[],
             );
 
-            if (discussions.length !== 0 && !CoreNetwork.isOnline()) {
+            if (discussions.length !== 0 && !CoreApp.isOnline()) {
                 throw new Error('cannot sync in offline');
             }
 
@@ -371,7 +370,7 @@ export class AddonModForumSyncProvider extends CoreCourseActivitySyncBaseProvide
         if (!replies.length) {
             // Nothing to sync.
             return { warnings: [], updated: false };
-        } else if (!CoreNetwork.isOnline()) {
+        } else if (!CoreApp.isOnline()) {
             // Cannot sync in offline.
             return Promise.reject(null);
         }
@@ -460,7 +459,7 @@ export class AddonModForumSyncProvider extends CoreCourseActivitySyncBaseProvide
                 [] as AddonModForumOfflineReply[],
             );
 
-            if (replies.length !== 0 && !CoreNetwork.isOnline()) {
+            if (replies.length !== 0 && !CoreApp.isOnline()) {
                 throw new Error('Cannot sync in offline');
             }
 

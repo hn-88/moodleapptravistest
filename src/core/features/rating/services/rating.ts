@@ -16,7 +16,7 @@ import { ContextLevel } from '@/core/constants';
 import { Injectable } from '@angular/core';
 import { CoreSiteWSPreSets, CoreSite } from '@classes/site';
 import { CoreUser } from '@features/user/services/user';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreSites } from '@services/sites';
 import { CoreUtils } from '@services/utils/utils';
 import { CoreWSExternalWarning } from '@services/ws';
@@ -114,7 +114,7 @@ export class CoreRatingProvider {
             }, siteId);
         };
 
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             // App is offline, store the action.
             return storeOffline();
         }
@@ -404,15 +404,17 @@ export class CoreRatingProvider {
             true,
         ));
 
-        const ratingsResults = await Promise.all(promises);
-
         if (!site.isVersionGreaterEqualThan([' 3.6.5', '3.7.1', '3.8'])) {
-            const ratings: CoreRatingItemRating[] = [].concat.apply([], ratingsResults);
+            promises.map((promise) => promise.then(async (ratings) => {
+                const userIds = ratings.map((rating: CoreRatingItemRating) => rating.userid);
 
-            const userIds = ratings.map((rating) => rating.userid);
+                await CoreUser.prefetchProfiles(userIds, courseId, site.id);
 
-            await CoreUser.prefetchProfiles(userIds, courseId, site.id);
+                return;
+            }));
         }
+
+        await Promise.all(promises);
     }
 
     /**

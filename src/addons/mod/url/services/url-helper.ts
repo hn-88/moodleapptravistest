@@ -36,7 +36,7 @@ export class AddonModUrlHelperProvider {
             const treated = await CoreContentLinksHelper.handleLink(url, undefined, true, true);
 
             if (!treated) {
-                await CoreSites.getCurrentSite()?.openInBrowserWithAutoLogin(url);
+                await CoreSites.getCurrentSite()?.openInBrowserWithAutoLoginIfSameSite(url);
             }
         } finally {
             modal.dismiss();

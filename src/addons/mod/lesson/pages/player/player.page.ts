@@ -18,7 +18,7 @@ import { IonContent } from '@ionic/angular';
 
 import { CoreError } from '@classes/errors/error';
 import { CanLeave } from '@guards/can-leave';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreNavigator } from '@services/navigator';
 import { CoreSites, CoreSitesCommonWSOptions, CoreSitesReadingStrategy } from '@services/sites';
 import { CoreSync } from '@services/sync';
@@ -280,18 +280,17 @@ export class AddonModLessonPlayerPage implements OnInit, OnDestroy, CanLeave {
             // If lesson has offline data already, use offline mode.
             this.offline = await AddonModLessonOffline.hasOfflineData(this.lesson.id);
 
-            if (!this.offline && !CoreNetwork.isOnline() && AddonModLesson.isLessonOffline(this.lesson) && !this.review) {
+            if (!this.offline && !CoreApp.isOnline() && AddonModLesson.isLessonOffline(this.lesson) && !this.review) {
                 // Lesson doesn't have offline data, but it allows offline and the device is offline. Use offline mode.
                 this.offline = true;
             }
 
-            const lessonId = this.lesson.id;
             const options = {
                 cmId: this.cmId,
                 readingStrategy: this.offline ? CoreSitesReadingStrategy.PREFER_CACHE : CoreSitesReadingStrategy.ONLY_NETWORK,
             };
             this.accessInfo = await this.callFunction<AddonModLessonGetAccessInformationWSResponse>(
-                () => AddonModLesson.getAccessInformation(lessonId, options),
+                AddonModLesson.getAccessInformation.bind(AddonModLesson.instance, this.lesson.id, options),
                 options,
             );
 
@@ -322,7 +321,7 @@ export class AddonModLessonPlayerPage implements OnInit, OnDestroy, CanLeave {
                     readingStrategy: this.offline ? CoreSitesReadingStrategy.PREFER_CACHE : CoreSitesReadingStrategy.ONLY_NETWORK,
                 };
                 promises.push(this.callFunction<AddonModLessonLessonWSData>(
-                    () => AddonModLesson.getLessonWithPassword(lessonId, options),
+                    AddonModLesson.getLessonWithPassword.bind(AddonModLesson.instance, this.lesson.id, options),
                     options,
                 ).then((lesson) => {
                     this.lesson = lesson;
@@ -374,22 +373,17 @@ export class AddonModLessonPlayerPage implements OnInit, OnDestroy, CanLeave {
      * @return Promise resolved when done.
      */
     protected async finishRetake(outOfTime?: boolean): Promise<void> {
-        if (!this.lesson) {
-            return;
-        }
-
-        const lesson = this.lesson;
         this.messages = [];
 
-        if (this.offline && CoreNetwork.isOnline()) {
+        if (this.offline && CoreApp.isOnline()) {
             // Offline mode but the app is online. Try to sync the data.
             const result = await CoreUtils.ignoreErrors(
-                AddonModLessonSync.syncLesson(lesson.id, true, true),
+                AddonModLessonSync.syncLesson(this.lesson!.id, true, true),
             );
 
             if (result?.warnings?.length) {
                 // Some data was deleted. Check if the retake has changed.
-                const info = await AddonModLesson.getAccessInformation(lesson.id, {
+                const info = await AddonModLesson.getAccessInformation(this.lesson!.id, {
                     cmId: this.cmId,
                 });
 
@@ -417,11 +411,11 @@ export class AddonModLessonPlayerPage implements OnInit, OnDestroy, CanLeave {
             accessInfo: this.accessInfo,
         };
         const data = await this.callFunction<AddonModLessonFinishRetakeResponse>(
-            () => AddonModLesson.finishRetake(lesson, this.courseId, options),
+            AddonModLesson.finishRetake.bind(AddonModLesson.instance, this.lesson, this.courseId, options),
             options,
         );
 
-        this.title = lesson.name;
+        this.title = this.lesson!.name;
         this.eolData = data.data;
         this.messages = this.messages.concat(data.messages);
         this.processData = undefined;
@@ -518,14 +512,13 @@ export class AddonModLessonPlayerPage implements OnInit, OnDestroy, CanLeave {
      * @return Promise resolved when done.
      */
     protected async loadMenu(): Promise<void> {
-        if (this.loadingMenu || !this.lesson) {
+        if (this.loadingMenu) {
             // Already loading.
             return;
         }
 
         try {
             this.loadingMenu = true;
-            const lessonId = this.lesson.id;
             const options = {
                 password: this.password,
                 cmId: this.cmId,
@@ -533,7 +526,7 @@ export class AddonModLessonPlayerPage implements OnInit, OnDestroy, CanLeave {
             };
 
             const pages = await this.callFunction<AddonModLessonGetPagesPageWSData[]>(
-                () => AddonModLesson.getPages(lessonId, options),
+                AddonModLesson.getPages.bind(AddonModLesson.instance, this.lesson!.id, options),
                 options,
             );
 
@@ -555,11 +548,8 @@ export class AddonModLessonPlayerPage implements OnInit, OnDestroy, CanLeave {
         if (pageId == AddonModLessonProvider.LESSON_EOL) {
             // End of lesson reached.
             return this.finishRetake();
-        } else if (!this.lesson) {
-            return;
         }
 
-        const lesson = this.lesson;
         const options = {
             password: this.password,
             review: this.review,
@@ -572,7 +562,7 @@ export class AddonModLessonPlayerPage implements OnInit, OnDestroy, CanLeave {
         };
 
         const data = await this.callFunction<AddonModLessonGetPageDataWSResponse>(
-            () => AddonModLesson.getPageData(lesson, pageId, options),
+            AddonModLesson.getPageData.bind(AddonModLesson.instance, this.lesson, pageId, options),
             options,
         );
 
@@ -625,14 +615,8 @@ export class AddonModLessonPlayerPage implements OnInit, OnDestroy, CanLeave {
      * @return Promise resolved when done.
      */
     protected async processPage(data: CoreFormFields, formSubmitted?: boolean): Promise<void> {
-        if (!this.lesson || !this.pageData) {
-            return;
-        }
-
         this.loaded = false;
 
-        const lesson = this.lesson;
-        const pageData = this.pageData;
         const options: AddonModLessonProcessPageOptions = {
             password: this.password,
             review: this.review,
@@ -643,10 +627,11 @@ export class AddonModLessonPlayerPage implements OnInit, OnDestroy, CanLeave {
 
         try {
             const result = await this.callFunction<AddonModLessonProcessPageResponse>(
-                () => AddonModLesson.processPage(
-                    lesson,
+                AddonModLesson.processPage.bind(
+                    AddonModLesson.instance,
+                    this.lesson,
                     this.courseId,
-                    pageData,
+                    this.pageData,
                     data,
                     options,
                 ),
@@ -661,7 +646,7 @@ export class AddonModLessonPlayerPage implements OnInit, OnDestroy, CanLeave {
                 );
             }
 
-            if (!this.offline && !this.review && AddonModLesson.isLessonOffline(lesson)) {
+            if (!this.offline && !this.review && AddonModLesson.isLessonOffline(this.lesson!)) {
                 // Lesson allows offline and the user changed some data in server. Update cached data.
                 const retake = this.accessInfo!.attemptscount;
                 const options = {
@@ -671,9 +656,9 @@ export class AddonModLessonPlayerPage implements OnInit, OnDestroy, CanLeave {
 
                 // Update in background the list of content pages viewed or question attempts.
                 if (AddonModLesson.isQuestionPage(this.pageData?.page?.type || -1)) {
-                    AddonModLesson.getQuestionsAttemptsOnline(lesson.id, retake, options);
+                    AddonModLesson.getQuestionsAttemptsOnline(this.lesson!.id, retake, options);
                 } else {
-                    AddonModLesson.getContentPagesViewedOnline(lesson.id, retake, options);
+                    AddonModLesson.getContentPagesViewedOnline(this.lesson!.id, retake, options);
                 }
             }
 
@@ -688,7 +673,7 @@ export class AddonModLessonPlayerPage implements OnInit, OnDestroy, CanLeave {
             this.processData = result;
             this.processDataButtons = [];
 
-            if (lesson.review && !result.correctanswer && !result.noanswer && !result.isessayquestion &&
+            if (this.lesson!.review && !result.correctanswer && !result.noanswer && !result.isessayquestion &&
                     !result.maxattemptsreached && !result.reviewmode) {
                 // User can try again, show button to do so.
                 this.processDataButtons.push({
@@ -698,11 +683,11 @@ export class AddonModLessonPlayerPage implements OnInit, OnDestroy, CanLeave {
             }
 
             // Button to continue.
-            if (lesson.review && !result.correctanswer && !result.noanswer && !result.isessayquestion &&
+            if (this.lesson!.review && !result.correctanswer && !result.noanswer && !result.isessayquestion &&
                     !result.maxattemptsreached) {
                 /* If both the "Yes, I'd like to try again" and "No, I just want to go on to the next question" point to the
                     same page then don't show the "No, I just want to go on to the next question" button. It's confusing. */
-                if (pageData.page?.id != result.newpageid) {
+                if (this.pageData!.page!.id != result.newpageid) {
                     // Button to continue the lesson (the page to go is configured by the teacher).
                     this.processDataButtons.push({
                         label: 'addon.mod_lesson.reviewquestioncontinue',

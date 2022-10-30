@@ -116,7 +116,7 @@ export class AddonModDataOfflineProvider {
         const site = await CoreSites.getSite(siteId);
         const entries = await site.getDb().getAllRecords<AddonModDataEntryDBRecord>(DATA_ENTRY_TABLE);
 
-        return entries.map((entry) => this.parseRecord(entry));
+        return entries.map(this.parseRecord.bind(this));
     }
 
     /**
@@ -134,7 +134,7 @@ export class AddonModDataOfflineProvider {
             'timemodified',
         );
 
-        return entries.map((entry) => this.parseRecord(entry));
+        return entries.map(this.parseRecord.bind(this));
     }
 
     /**
@@ -177,7 +177,7 @@ export class AddonModDataOfflineProvider {
             { dataid: dataId, entryid: entryId },
         );
 
-        return entries.map((entry) => this.parseRecord(entry));
+        return entries.map(this.parseRecord.bind(this));
     }
 
     /**
@@ -262,7 +262,7 @@ export class AddonModDataOfflineProvider {
     ): Promise<AddonModDataEntryDBRecord> {
         const site = await CoreSites.getSite(siteId);
 
-        timemodified = timemodified || Date.now();
+        timemodified = timemodified || new Date().getTime();
         entryId = entryId === undefined || entryId === null ? -timemodified : entryId;
 
         const entry: AddonModDataEntryDBRecord = {

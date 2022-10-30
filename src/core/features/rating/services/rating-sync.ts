@@ -16,7 +16,7 @@ import { ContextLevel } from '@/core/constants';
 import { Injectable } from '@angular/core';
 import { CoreSyncBaseProvider } from '@classes/base-sync';
 import { CoreNetworkError } from '@classes/errors/network-error';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreSites } from '@services/sites';
 import { CoreTextUtils } from '@services/utils/text';
 import { CoreUtils } from '@services/utils/utils';
@@ -202,7 +202,7 @@ export class CoreRatingSyncProvider extends CoreSyncBaseProvider<CoreRatingSyncI
             // Nothing to sync.
             return result;
         }
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             // Cannot sync in offline.
             throw new CoreNetworkError();
         }

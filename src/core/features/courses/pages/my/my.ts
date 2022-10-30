@@ -14,9 +14,6 @@
 
 import { AddonBlockMyOverviewComponent } from '@addons/block/myoverview/components/myoverview/myoverview';
 import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { AsyncComponent } from '@classes/async-component';
-import { PageLoadsManager } from '@classes/page-loads-manager';
-import { CorePromisedValue } from '@classes/promised-value';
 import { CoreBlockComponent } from '@features/block/components/block/block';
 import { CoreBlockDelegate } from '@features/block/services/block-delegate';
 import { CoreCourseBlock } from '@features/course/services/course';
@@ -27,7 +24,6 @@ import { CoreSites } from '@services/sites';
 import { CoreDomUtils } from '@services/utils/dom';
 import { CoreUtils } from '@services/utils/utils';
 import { CoreEventObserver, CoreEvents } from '@singletons/events';
-import { Subscription } from 'rxjs';
 import { CoreCourses } from '../../services/courses';
 
 /**
@@ -37,12 +33,8 @@ import { CoreCourses } from '../../services/courses';
     selector: 'page-core-courses-my',
     templateUrl: 'my.html',
     styleUrls: ['my.scss'],
-    providers: [{
-        provide: PageLoadsManager,
-        useClass: PageLoadsManager,
-    }],
 })
-export class CoreCoursesMyCoursesPage implements OnInit, OnDestroy, AsyncComponent {
+export class CoreCoursesMyCoursesPage implements OnInit, OnDestroy {
 
     @ViewChild(CoreBlockComponent) block!: CoreBlockComponent;
 
@@ -56,10 +48,8 @@ export class CoreCoursesMyCoursesPage implements OnInit, OnDestroy, AsyncCompone
     hasSideBlocks = false;
 
     protected updateSiteObserver: CoreEventObserver;
-    protected onReadyPromise = new CorePromisedValue<void>();
-    protected loadsManagerSubscription: Subscription;
 
-    constructor(protected loadsManager: PageLoadsManager) {
+    constructor() {
         // Refresh the enabled flags if site is updated.
         this.updateSiteObserver = CoreEvents.on(CoreEvents.SITE_UPDATED, () => {
             this.downloadCoursesEnabled = !CoreCourses.isDownloadCoursesDisabledInSite();
@@ -68,11 +58,6 @@ export class CoreCoursesMyCoursesPage implements OnInit, OnDestroy, AsyncCompone
         }, CoreSites.getCurrentSiteId());
 
         this.userId = CoreSites.getCurrentSiteUserId();
-
-        this.loadsManagerSubscription = this.loadsManager.onRefreshPage.subscribe(() => {
-            this.loaded = false;
-            this.loadContent();
-        });
     }
 
     /**
@@ -86,16 +71,13 @@ export class CoreCoursesMyCoursesPage implements OnInit, OnDestroy, AsyncCompone
 
         this.loadSiteName();
 
-        this.loadContent(true);
+        this.loadContent();
     }
 
     /**
-     * Load data.
-     *
-     * @param firstLoad Whether it's the first load.
+     * Load my overview block instance.
      */
-    protected async loadContent(firstLoad = false): Promise<void> {
-        const loadWatcher = this.loadsManager.startPageLoad(this, !!firstLoad);
+    protected async loadContent(): Promise<void> {
         const available = await CoreCoursesDashboard.isAvailable();
         const disabled = await CoreCourses.isMyCoursesDisabled();
 
@@ -103,11 +85,10 @@ export class CoreCoursesMyCoursesPage implements OnInit, OnDestroy, AsyncCompone
 
         if (available && !disabled) {
             try {
-                const blocks = await loadWatcher.watchRequest(
-                    CoreCoursesDashboard.getDashboardBlocksObservable({
-                        myPage: supportsMyParam ? this.myPageCourses : undefined,
-                        readingStrategy: loadWatcher.getReadingStrategy(),
-                    }),
+                const blocks = await CoreCoursesDashboard.getDashboardBlocks(
+                    undefined,
+                    undefined,
+                    supportsMyParam ? this.myPageCourses : undefined,
                 );
 
                 // My overview block should always be in main blocks, but check side blocks too just in case.
@@ -137,7 +118,6 @@ export class CoreCoursesMyCoursesPage implements OnInit, OnDestroy, AsyncCompone
         }
 
         this.loaded = true;
-        this.onReadyPromise.resolve();
     }
 
     /**
@@ -170,7 +150,7 @@ export class CoreCoursesMyCoursesPage implements OnInit, OnDestroy, AsyncCompone
 
         // Invalidate the blocks.
         if (this.myOverviewBlock) {
-            promises.push(CoreUtils.ignoreErrors(this.myOverviewBlock.invalidateContent()));
+            promises.push(CoreUtils.ignoreErrors(this.myOverviewBlock.doRefresh()));
         }
 
         Promise.all(promises).finally(() => {
@@ -185,14 +165,6 @@ export class CoreCoursesMyCoursesPage implements OnInit, OnDestroy, AsyncCompone
      */
     ngOnDestroy(): void {
         this.updateSiteObserver?.off();
-        this.loadsManagerSubscription.unsubscribe();
-    }
-
-    /**
-     * @inheritdoc
-     */
-    async ready(): Promise<void> {
-        return await this.onReadyPromise;
     }
 
 }

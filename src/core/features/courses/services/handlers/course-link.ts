@@ -47,7 +47,13 @@ export class CoreCoursesCourseLinkHandlerService extends CoreContentLinksHandler
     }
 
     /**
-     * @inheritdoc
+     * Get the list of actions for a link (url).
+     *
+     * @param siteIds List of sites the URL belongs to.
+     * @param url The URL to treat.
+     * @param params The params of the URL. E.g. 'mysite.com?id=1' -> {id: 1}
+     * @param courseId Course ID related to the URL. Optional but recommended.
+     * @return List of (or promise resolved with list of) actions.
      */
     getActions(
         siteIds: string[],
@@ -97,10 +103,17 @@ export class CoreCoursesCourseLinkHandlerService extends CoreContentLinksHandler
     }
 
     /**
-     * @inheritdoc
+     * Check if the handler is enabled for a certain site (site + user) and a URL.
+     * If not defined, defaults to true.
+     *
+     * @param siteId The site ID.
+     * @param url The URL to treat.
+     * @param params The params of the URL. E.g. 'mysite.com?id=1' -> {id: 1}
+     * @param courseId Course ID related to the URL. Optional but recommended.
+     * @return Whether the handler is enabled for the URL and site.
      */
-    async isEnabled(siteId: string, url: string, params: Params): Promise<boolean> {
-        const courseId = parseInt(params.id, 10);
+    async isEnabled(siteId: string, url: string, params: Params, courseId?: number): Promise<boolean> {
+        courseId = parseInt(params.id, 10);
 
         if (!courseId) {
             return false;
@@ -194,7 +207,7 @@ export class CoreCoursesCourseLinkHandlerService extends CoreContentLinksHandler
                 CoreSites.getCurrentSite()?.openInBrowserWithAutoLogin(url, undefined, { showBrowserWarning: false });
             } catch {
                 // User cancelled.
-            }
+            };
 
             throw new CoreError(notEnrolledMessage);
         }
@@ -320,7 +333,7 @@ export class CoreCoursesCourseLinkHandlerService extends CoreContentLinksHandler
 
             await CoreUtils.wait(5000);
 
-            return this.waitForEnrolled(courseId);
+            return await this.waitForEnrolled(courseId);
         }
     }
 

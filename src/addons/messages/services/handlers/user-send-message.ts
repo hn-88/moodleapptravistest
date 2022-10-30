@@ -71,9 +71,10 @@ export class AddonMessagesSendMessageUserHandlerService implements CoreUserProfi
 
                 const pageParams: Params = {
                     showKeyboard: true,
+                    userId: user.id,
                     hideInfo: true,
                 };
-                CoreNavigator.navigateToSitePath(`/messages/discussion/user/${user.id}`, { params: pageParams });
+                CoreNavigator.navigateToSitePath('/messages/discussion', { params: pageParams });
             },
         };
     }

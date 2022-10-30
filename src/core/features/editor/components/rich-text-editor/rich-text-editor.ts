@@ -28,12 +28,13 @@ import { FormControl } from '@angular/forms';
 import { IonTextarea, IonContent, IonSlides } from '@ionic/angular';
 import { Subscription } from 'rxjs';
 
+import { CoreApp } from '@services/app';
 import { CoreSites } from '@services/sites';
 import { CoreFilepool } from '@services/filepool';
 import { CoreDomUtils } from '@services/utils/dom';
 import { CoreUrlUtils } from '@services/utils/url';
 import { CoreUtils } from '@services/utils/utils';
-import { Translate } from '@singletons';
+import { Platform, Translate } from '@singletons';
 import { CoreEventFormActionData, CoreEventObserver, CoreEvents } from '@singletons/events';
 import { CoreEditorOffline } from '../../services/editor-offline';
 import { CoreComponentsRegistry } from '@singletons/components-registry';
@@ -41,7 +42,6 @@ import { CoreLoadingComponent } from '@components/loading/loading';
 import { CoreScreen } from '@services/screen';
 import { CoreCancellablePromise } from '@classes/cancellable-promise';
 import { CoreDom } from '@singletons/dom';
-import { CorePlatform } from '@services/platform';
 
 /**
  * Component to display a rich text editor if enabled.
@@ -155,7 +155,7 @@ export class CoreEditorRichTextEditorComponent implements OnInit, AfterViewInit,
         this.canScanQR = CoreUtils.canScanQR();
         this.isPhone = CoreScreen.isMobile;
         this.toolbarHidden = this.isPhone;
-        this.direction = CorePlatform.isRTL ? 'rtl' : 'ltr';
+        this.direction = Platform.isRTL ? 'rtl' : 'ltr';
     }
 
     /**
@@ -171,11 +171,11 @@ export class CoreEditorRichTextEditorComponent implements OnInit, AfterViewInit,
         this.setContent(this.control?.value);
         this.originalContent = this.control?.value;
         this.lastDraft = this.control?.value;
-        this.editorElement.onchange = () => this.onChange();
-        this.editorElement.onkeyup = () => this.onChange();
-        this.editorElement.onpaste = () => this.onChange();
-        this.editorElement.oninput = () => this.onChange();
-        this.editorElement.onkeydown = event => this.moveCursor(event);
+        this.editorElement.onchange = this.onChange.bind(this);
+        this.editorElement.onkeyup = this.onChange.bind(this);
+        this.editorElement.onpaste = this.onChange.bind(this);
+        this.editorElement.oninput = this.onChange.bind(this);
+        this.editorElement.onkeydown = this.moveCursor.bind(this);
 
         // Use paragraph on enter.
         document.execCommand('DefaultParagraphSeparator', false, 'p');
@@ -258,7 +258,7 @@ export class CoreEditorRichTextEditorComponent implements OnInit, AfterViewInit,
             this.windowResized();
         }, 50);
 
-        document.addEventListener('selectionchange', this.selectionChangeFunction = () => this.updateToolbarStyles());
+        document.addEventListener('selectionchange', this.selectionChangeFunction = this.updateToolbarStyles.bind(this));
 
         this.keyboardObserver = CoreEvents.on(CoreEvents.KEYBOARD_CHANGE, () => {
             // Opening or closing the keyboard also calls the resize function, but sometimes the resize is called too soon.
@@ -269,7 +269,7 @@ export class CoreEditorRichTextEditorComponent implements OnInit, AfterViewInit,
         // Change the side when the language changes.
         this.languageChangedSubscription = Translate.onLangChange.subscribe(() => {
             setTimeout(() => {
-                this.direction = CorePlatform.isRTL ? 'rtl' : 'ltr';
+                this.direction = Platform.isRTL ? 'rtl' : 'ltr';
             });
         });
     }
@@ -797,7 +797,7 @@ export class CoreEditorRichTextEditorComponent implements OnInit, AfterViewInit,
         const selection = window.getSelection()?.toString();
 
         // When RTE is focused with a whole paragraph in desktop the stopBubble will not fire click.
-        if (CorePlatform.isMobile() || !this.rteEnabled || document.activeElement != this.editorElement || selection == '') {
+        if (CoreApp.isMobile() || !this.rteEnabled || document.activeElement != this.editorElement || selection == '') {
             this.stopBubble(event);
         }
     }
@@ -973,7 +973,7 @@ export class CoreEditorRichTextEditorComponent implements OnInit, AfterViewInit,
                     this.showMessage('core.editor.textrecovered', this.RESTORE_MESSAGE_CLEAR_TIME);
                 }
             }
-        } catch {
+        } catch (error) {
             // Ignore errors, shouldn't happen.
         }
     }

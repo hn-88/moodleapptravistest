@@ -14,7 +14,6 @@
 
 import { Component, Input, Output, OnInit, OnDestroy, EventEmitter } from '@angular/core';
 import { CoreApp } from '@services/app';
-import { CoreNetwork } from '@services/network';
 import { CoreFilepool } from '@services/filepool';
 import { CoreFileHelper } from '@services/file-helper';
 import { CorePluginFileDelegate } from '@services/plugin-file-delegate';
@@ -198,7 +197,7 @@ export class CoreFileComponent implements OnInit, OnDestroy {
             return;
         }
 
-        if (!CoreNetwork.isOnline() && (!openAfterDownload || (openAfterDownload &&
+        if (!CoreApp.isOnline() && (!openAfterDownload || (openAfterDownload &&
                 !CoreFileHelper.isStateDownloaded(this.state)))) {
             CoreDomUtils.showErrorModal('core.networkerrormsg', true);
 

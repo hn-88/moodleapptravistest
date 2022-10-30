@@ -36,7 +36,8 @@ import { CoreLogger } from '@singletons/logger';
 import { CoreApp } from '@services/app';
 import { CoreInfiniteLoadingComponent } from '@components/infinite-loading/infinite-loading';
 import { Md5 } from 'ts-md5/dist/md5';
-import moment from 'moment-timezone';
+import moment from 'moment';
+import { CoreAnimations } from '@components/animations';
 import { CoreError } from '@classes/errors/error';
 import { Translate } from '@singletons';
 import { CoreNavigator } from '@services/navigator';
@@ -52,6 +53,7 @@ import { CoreDom } from '@singletons/dom';
 @Component({
     selector: 'page-addon-messages-discussion',
     templateUrl: 'discussion.html',
+    animations: [CoreAnimations.SLIDE_IN_OUT],
     styleUrls: ['discussion.scss'],
 })
 export class AddonMessagesDiscussionPage implements OnInit, OnDestroy, AfterViewInit {
@@ -154,14 +156,28 @@ export class AddonMessagesDiscussionPage implements OnInit, OnDestroy, AfterView
      * Setup code for the page.
      */
     async ngOnInit(): Promise<void> {
-        this.conversationId = CoreNavigator.getRouteNumberParam('conversationId');
-        this.userId = CoreNavigator.getRouteNumberParam('userId');
-        this.showInfo = !CoreNavigator.getRouteBooleanParam('hideInfo');
-        this.showKeyboard = !!CoreNavigator.getRouteBooleanParam('showKeyboard');
 
-        await this.fetchData();
+        this.route.queryParams.subscribe(async (params) => {
+            const oldConversationId = this.conversationId;
+            const oldUserId = this.userId;
+            let forceScrollToBottom = false;
+            this.conversationId = CoreNavigator.getRouteNumberParam('conversationId', { params }) || undefined;
+            this.userId = CoreNavigator.getRouteNumberParam('userId', { params }) || undefined;
+            this.showInfo = !params.hideInfo;
 
-        this.scrollToBottom(true);
+            if (oldConversationId != this.conversationId || oldUserId != this.userId) {
+                // Showing reload again can break animations.
+                this.loaded = false;
+                this.initialized = false;
+                forceScrollToBottom = true;
+            }
+
+            this.showKeyboard = CoreNavigator.getRouteBooleanParam('showKeyboard', { params }) || false;
+
+            await this.fetchData();
+
+            this.scrollToBottom(forceScrollToBottom);
+        });
     }
 
     /**
@@ -289,7 +305,7 @@ export class AddonMessagesDiscussionPage implements OnInit, OnDestroy, AfterView
             } else {
                 if (this.userId) {
                     // Fake the user member info.
-                    promises.push(CoreUser.getProfile(this.userId).then(async (user) => {
+                    promises.push(CoreUser.getProfile(this.userId!).then(async (user) => {
                         this.otherMember = {
                             id: user.id,
                             fullname: user.fullname,
@@ -508,7 +524,7 @@ export class AddonMessagesDiscussionPage implements OnInit, OnDestroy, AfterView
             return;
         }
 
-        const messages = Array.from(this.hostElement.querySelectorAll('core-message:not(.is-mine)'))
+        const messages = Array.from(this.hostElement.querySelectorAll('.addon-message-not-mine'))
             .slice(-this.newMessages)
             .reverse();
 
@@ -539,7 +555,7 @@ export class AddonMessagesDiscussionPage implements OnInit, OnDestroy, AfterView
         // Try to get the conversationId if we don't have it.
         if (!conversationId && userId) {
             try {
-                if (userId === this.currentUserId && AddonMessages.isSelfConversationEnabled()) {
+                if (userId == this.currentUserId && AddonMessages.isSelfConversationEnabled()) {
                     fallbackConversation = await AddonMessages.getSelfConversation();
                 } else {
                     fallbackConversation = await AddonMessages.getConversationBetweenUsers(userId, undefined, true);
@@ -547,7 +563,7 @@ export class AddonMessagesDiscussionPage implements OnInit, OnDestroy, AfterView
                 conversationId = fallbackConversation.id;
             } catch (error) {
                 // Probably conversation does not exist or user is offline. Try to load offline messages.
-                this.isSelf = userId === this.currentUserId;
+                this.isSelf = userId == this.currentUserId;
 
                 const messages = await AddonMessagesOffline.getMessages(userId);
 
@@ -568,15 +584,11 @@ export class AddonMessagesDiscussionPage implements OnInit, OnDestroy, AfterView
             }
         }
 
-        if (!conversationId) {
-            return false;
-        }
-
         // Retrieve the conversation. Invalidate data first to get the right unreadcount.
-        await AddonMessages.invalidateConversation(conversationId);
+        await AddonMessages.invalidateConversation(conversationId!);
 
         try {
-            this.conversation = await AddonMessages.getConversation(conversationId, undefined, true);
+            this.conversation = await AddonMessages.getConversation(conversationId!, undefined, true);
         } catch (error) {
             // Get conversation failed, use the fallback one if we have it.
             if (fallbackConversation) {
@@ -876,13 +888,18 @@ export class AddonMessagesDiscussionPage implements OnInit, OnDestroy, AfterView
      *
      * @return Resolved when done.
      */
-    protected async waitForFetch(): Promise<void> {
+    protected waitForFetch(): Promise<void> {
         if (!this.fetching) {
-            return;
+            return Promise.resolve();
         }
 
-        await CoreUtils.wait(400);
-        await CoreUtils.ignoreErrors(this.waitForFetch());
+        const deferred = CoreUtils.promiseDefer<void>();
+
+        setTimeout(() => this.waitForFetch().finally(() => {
+            deferred.resolve();
+        }), 400);
+
+        return deferred.promise;
     }
 
     /**
@@ -935,6 +952,7 @@ export class AddonMessagesDiscussionPage implements OnInit, OnDestroy, AfterView
         message: AddonMessagesConversationMessageFormatted,
         index: number,
     ): Promise<void> {
+
         const canDeleteAll = this.conversation && this.conversation.candeletemessagesforallusers;
         const langKey = message.pending || canDeleteAll || this.isSelf ? 'core.areyousure' :
             'addon.messages.deletemessageconfirmation';
@@ -1086,7 +1104,7 @@ export class AddonMessagesDiscussionPage implements OnInit, OnDestroy, AfterView
      */
     scrollToFirstUnreadMessage(): void {
         if (this.newMessages > 0) {
-            const messages = Array.from(this.hostElement.querySelectorAll<HTMLElement>('core-message:not(.is-mine)'));
+            const messages = Array.from(this.hostElement.querySelectorAll<HTMLElement>('.addon-message-not-mine'));
 
             CoreDom.scrollToElement(messages[messages.length - this.newMessages]);
         }
@@ -1111,7 +1129,7 @@ export class AddonMessagesDiscussionPage implements OnInit, OnDestroy, AfterView
             useridfrom: this.currentUserId,
             smallmessage: text,
             text: text,
-            timecreated: Date.now(),
+            timecreated: new Date().getTime(),
         };
         message.showDate = this.showDate(message, this.messages[this.messages.length - 1]);
         this.addMessage(message, false);
@@ -1251,7 +1269,7 @@ export class AddonMessagesDiscussionPage implements OnInit, OnDestroy, AfterView
             });
 
             if (userId !== undefined) {
-                const splitViewLoaded = CoreNavigator.isCurrentPathInTablet('**/messages/**/discussion/**');
+                const splitViewLoaded = CoreNavigator.isCurrentPathInTablet('**/messages/**/discussion');
 
                 // Open user conversation.
                 if (splitViewLoaded) {
@@ -1263,7 +1281,7 @@ export class AddonMessagesDiscussionPage implements OnInit, OnDestroy, AfterView
                     );
                 } else {
                     // Open the discussion in a new view.
-                    CoreNavigator.navigateToSitePath(`/messages/discussion/user/${userId}`);
+                    CoreNavigator.navigateToSitePath('/messages/discussion', { params: { userId } });
                 }
             }
         } else {

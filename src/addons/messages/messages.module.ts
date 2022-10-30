@@ -32,8 +32,7 @@ import { CorePushNotificationsDelegate } from '@features/pushnotifications/servi
 import { AddonMessagesPushClickHandler } from './services/handlers/push-click';
 import { CoreUserDelegate } from '@features/user/services/user-delegate';
 import { AddonMessagesSendMessageUserHandler } from './services/handlers/user-send-message';
-import { NgZone } from '@singletons';
-import { CoreNetwork } from '@services/network';
+import { Network, NgZone } from '@singletons';
 import { AddonMessagesSync, AddonMessagesSyncProvider } from './services/messages-sync';
 import { AddonMessagesSyncCronHandler } from './services/handlers/sync-cron';
 import { CoreSitePreferencesRoutingModule } from '@features/settings/pages/site/site-routing';
@@ -87,7 +86,7 @@ const preferencesRoutes: Routes = [
                 CoreUserDelegate.registerHandler(AddonMessagesSendMessageUserHandler.instance);
 
                 // Sync some discussions when device goes online.
-                CoreNetwork.onConnect().subscribe(() => {
+                Network.onConnect().subscribe(() => {
                     // Execute the callback in the Angular zone, so change detection doesn't stop working.
                     NgZone.run(() => {
                         AddonMessagesSync.syncAllDiscussions(undefined, true);

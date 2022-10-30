@@ -41,7 +41,7 @@ import {
 } from '../../services/data';
 import { AddonModDataHelper } from '../../services/data-helper';
 import { CoreDom } from '@singletons/dom';
-import { AddonModDataEntryFieldInitialized } from '../../classes/base-field-plugin-component';
+import { AddonModDataEntryFieldInitialized } from '../../classes/field-plugin-component';
 
 /**
  * Page that displays the view edit page.
@@ -179,7 +179,7 @@ export class AddonModDataEditPage implements OnInit {
 
                 if (refresh) {
                     groupInfo = await CoreGroups.getActivityGroupInfo(this.database.coursemodule);
-                    if (groupInfo.visibleGroups && groupInfo.groups.length) {
+                    if (groupInfo.visibleGroups && groupInfo.groups?.length) {
                         // There is a bug in Moodle with All participants and visible groups (MOBILE-3597). Remove it.
                         groupInfo.groups = groupInfo.groups.filter(group => group.id !== 0);
                         groupInfo.defaultGroupId = groupInfo.groups[0].id;
@@ -270,7 +270,7 @@ export class AddonModDataEditPage implements OnInit {
             const modal = await CoreDomUtils.showModalLoading('core.sending', true);
 
             // Create an ID to assign files.
-            const entryTemp = this.entryId ? this.entryId : - (Date.now());
+            const entryTemp = this.entryId ? this.entryId : - (new Date().getTime());
             let editData: AddonModDataEntryWSField[] = [];
 
             try {
@@ -405,7 +405,7 @@ export class AddonModDataEditPage implements OnInit {
             form: this.editForm,
             database: this.database,
             errors: this.errors,
-            onFieldInit: (data) => this.onFieldInit(data),
+            onFieldInit: this.onFieldInit.bind(this),
         };
 
         let template = AddonModDataHelper.getTemplate(this.database!, AddonModDataTemplateType.ADD, this.fieldsArray);

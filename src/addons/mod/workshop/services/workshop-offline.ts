@@ -141,7 +141,7 @@ export class AddonModWorkshopOfflineProvider {
 
         const records = await site.getDb().getRecords<AddonModWorkshopSubmissionDBRecord>(SUBMISSIONS_TABLE);
 
-        return records.map((record) => this.parseSubmissionRecord(record));
+        return records.map(this.parseSubmissionRecord.bind(this));
     }
 
     /**
@@ -160,7 +160,7 @@ export class AddonModWorkshopOfflineProvider {
 
         const records = await site.getDb().getRecords<AddonModWorkshopSubmissionDBRecord>(SUBMISSIONS_TABLE, conditions);
 
-        return records.map((record) => this.parseSubmissionRecord(record));
+        return records.map(this.parseSubmissionRecord.bind(this));
     }
 
     /**
@@ -273,7 +273,7 @@ export class AddonModWorkshopOfflineProvider {
 
         const records = await site.getDb().getRecords<AddonModWorkshopAssessmentDBRecord>(ASSESSMENTS_TABLE);
 
-        return records.map((record) => this.parseAssessmentRecord(record));
+        return records.map(this.parseAssessmentRecord.bind(this));
     }
 
     /**
@@ -292,7 +292,7 @@ export class AddonModWorkshopOfflineProvider {
 
         const records = await site.getDb().getRecords<AddonModWorkshopAssessmentDBRecord>(ASSESSMENTS_TABLE, conditions);
 
-        return records.map((record) => this.parseAssessmentRecord(record));
+        return records.map(this.parseAssessmentRecord.bind(this));
     }
 
     /**
@@ -388,7 +388,7 @@ export class AddonModWorkshopOfflineProvider {
 
         const records = await site.getDb().getRecords<AddonModWorkshopEvaluateSubmissionDBRecord>(EVALUATE_SUBMISSIONS_TABLE);
 
-        return records.map((record) => this.parseEvaluateSubmissionRecord(record));
+        return records.map(this.parseEvaluateSubmissionRecord.bind(this));
     }
 
     /**
@@ -408,7 +408,7 @@ export class AddonModWorkshopOfflineProvider {
         const records =
             await site.getDb().getRecords<AddonModWorkshopEvaluateSubmissionDBRecord>(EVALUATE_SUBMISSIONS_TABLE, conditions);
 
-        return records.map((record) => this.parseEvaluateSubmissionRecord(record));
+        return records.map(this.parseEvaluateSubmissionRecord.bind(this));
     }
 
     /**
@@ -518,7 +518,7 @@ export class AddonModWorkshopOfflineProvider {
 
         const records = await site.getDb().getRecords<AddonModWorkshopEvaluateAssessmentDBRecord>(EVALUATE_ASSESSMENTS_TABLE);
 
-        return records.map((record) => this.parseEvaluateAssessmentRecord(record));
+        return records.map(this.parseEvaluateAssessmentRecord.bind(this));
     }
 
     /**
@@ -538,7 +538,7 @@ export class AddonModWorkshopOfflineProvider {
         const records =
             await site.getDb().getRecords<AddonModWorkshopEvaluateAssessmentDBRecord>(EVALUATE_ASSESSMENTS_TABLE, conditions);
 
-        return records.map((record) => this.parseEvaluateAssessmentRecord(record));
+        return records.map(this.parseEvaluateAssessmentRecord.bind(this));
     }
 
     /**

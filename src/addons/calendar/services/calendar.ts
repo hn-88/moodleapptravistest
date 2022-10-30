@@ -15,7 +15,7 @@
 import { Injectable } from '@angular/core';
 import { CoreSites } from '@services/sites';
 import { CoreSite, CoreSiteWSPreSets } from '@classes/site';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreTextUtils } from '@services/utils/text';
 import { CoreTimeUtils } from '@services/utils/time';
 import { CoreUrlUtils } from '@services/utils/url';
@@ -27,12 +27,12 @@ import { ILocalNotification } from '@ionic-native/local-notifications';
 import { AddonCalendarOffline } from './calendar-offline';
 import { CoreUser } from '@features/user/services/user';
 import { CoreWSExternalWarning, CoreWSDate } from '@services/ws';
-import moment from 'moment-timezone';
+import moment from 'moment';
 import { AddonCalendarEventDBRecord, AddonCalendarReminderDBRecord, EVENTS_TABLE, REMINDERS_TABLE } from './database/calendar';
 import { CoreCourses } from '@features/courses/services/courses';
 import { ContextLevel, CoreConstants } from '@/core/constants';
 import { CoreWSError } from '@classes/errors/wserror';
-import { ApplicationInit, makeSingleton, Translate } from '@singletons';
+import { ApplicationInit, makeSingleton, Translate, Platform } from '@singletons';
 import { AddonCalendarOfflineEventDBRecord } from './database/calendar-offline';
 import { AddonCalendarMainMenuHandlerService } from './handlers/mainmenu';
 import { SafeUrl } from '@angular/platform-browser';
@@ -41,7 +41,6 @@ import { AddonCalendarFilter } from './calendar-helper';
 import { AddonCalendarSyncEvents, AddonCalendarSyncProvider } from './calendar-sync';
 import { CoreEvents } from '@singletons/events';
 import { CoreText } from '@singletons/text';
-import { CorePlatform } from '@services/platform';
 
 const ROOT_CACHE_KEY = 'mmaCalendar:';
 
@@ -242,7 +241,7 @@ export class AddonCalendarProvider {
         const storeOffline = (): Promise<boolean> =>
             AddonCalendarOffline.markDeleted(eventId, name, deleteAll, siteId).then(() => false);
 
-        if (forceOffline || !CoreNetwork.isOnline()) {
+        if (forceOffline || !CoreApp.isOnline()) {
             // App is offline, store the action.
             return storeOffline();
         }
@@ -503,7 +502,7 @@ export class AddonCalendarProvider {
     async getAllEventsFromLocalDb(siteId?: string): Promise<AddonCalendarEventDBRecord[]> {
         const site = await CoreSites.getSite(siteId);
 
-        return site.getDb().getAllRecords(EVENTS_TABLE);
+        return await site.getDb().getAllRecords(EVENTS_TABLE);
     }
 
     /**
@@ -529,7 +528,7 @@ export class AddonCalendarProvider {
         // Convert the array to an object.
         const result = {};
         if (response.allowedeventtypes) {
-            response.allowedeventtypes.forEach((type) => {
+            response.allowedeventtypes.map((type) => {
                 result[type] = true;
             });
         }
@@ -796,7 +795,7 @@ export class AddonCalendarProvider {
      * @param event The event to get its type.
      * @return Event type.
      */
-    getEventType(event: { modulename?: string; eventtype: AddonCalendarEventType | string }): string {
+    getEventType(event: { modulename?: string; eventtype: AddonCalendarEventType}): string {
         if (event.modulename) {
             return 'course';
         }
@@ -916,7 +915,7 @@ export class AddonCalendarProvider {
     async getEventReminders(id: number, siteId?: string): Promise<AddonCalendarReminderDBRecord[]> {
         const site = await CoreSites.getSite(siteId);
 
-        return site.getDb().getRecords(REMINDERS_TABLE, { eventid: id }, 'timecreated ASC, time ASC');
+        return await site.getDb().getRecords(REMINDERS_TABLE, { eventid: id }, 'timecreated ASC, time ASC');
     }
 
     /**
@@ -1021,7 +1020,7 @@ export class AddonCalendarProvider {
     async getLocalEventsByRepeatIdFromLocalDb(repeatId: number, siteId?: string): Promise<AddonCalendarEventDBRecord[]> {
         const site = await CoreSites.getSite(siteId);
 
-        return site.getDb().getRecords(EVENTS_TABLE, { repeatid: repeatId });
+        return await site.getDb().getRecords(EVENTS_TABLE, { repeatid: repeatId });
     }
 
     /**
@@ -1075,7 +1074,7 @@ export class AddonCalendarProvider {
         });
 
         // Store starting week day preference, we need it in offline to show months that are not in cache.
-        if (CoreNetwork.isOnline()) {
+        if (CoreApp.isOnline()) {
             CoreConfig.set(AddonCalendarProvider.STARTING_WEEK_DAY, response.daynames[0].dayno);
         }
 
@@ -1430,7 +1429,7 @@ export class AddonCalendarProvider {
      * @return Promise resolved when all the notifications have been scheduled.
      */
     async scheduleAllSitesEventsNotifications(): Promise<void> {
-        await CorePlatform.ready();
+        await Platform.ready();
 
         const notificationsEnabled = CoreLocalNotifications.isAvailable();
 
@@ -1708,7 +1707,7 @@ export class AddonCalendarProvider {
             return { sent: false, event };
         };
 
-        if (options.forceOffline || !CoreNetwork.isOnline()) {
+        if (options.forceOffline || !CoreApp.isOnline()) {
             // App is offline, store the event.
             return storeOffline();
         }
@@ -1878,7 +1877,7 @@ export type AddonCalendarEventBase = {
     activityname?: string; // Activityname.
     activitystr?: string; // Activitystr.
     instance?: number; // Instance.
-    eventtype: AddonCalendarEventType | string; // Eventtype.
+    eventtype: AddonCalendarEventType; // Eventtype.
     timestart: number; // Timestart.
     timeduration: number; // Timeduration.
     timesort: number; // Timesort.
@@ -1949,7 +1948,6 @@ export type AddonCalendarEventBase = {
  */
 export type AddonCalendarEvent = AddonCalendarEventBase & {
     url: string; // Url.
-    purpose?: string; // Purpose. @since 4.0
     action?: {
         name: string; // Name.
         url: string; // Url.
@@ -2285,7 +2283,7 @@ export type AddonCalendarEventToDisplay = Partial<AddonCalendarCalendarEvent> & 
     timestart: number;
     timeduration: number;
     eventcount: number;
-    eventtype: AddonCalendarEventType | string;
+    eventtype: AddonCalendarEventType;
     courseid?: number;
     offline?: boolean;
     showDate?: boolean; // Calculated in the app. Whether date should be shown before this event.
@@ -2303,7 +2301,6 @@ export type AddonCalendarEventToDisplay = Partial<AddonCalendarCalendarEvent> & 
     ispast?: boolean; // Calculated in the app. Whether the event is in the past.
     contextLevel?: ContextLevel;
     contextInstanceId?: number;
-    purpose?: string; // Purpose. @since 4.0
 };
 
 /**

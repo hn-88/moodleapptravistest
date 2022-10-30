@@ -18,18 +18,11 @@ import { Route, RouterModule, ROUTES, Routes } from '@angular/router';
 import { buildTabMainRoutes } from '@features/mainmenu/mainmenu-tab-routing.module';
 import { AddonMessagesIndexGuard } from './guards';
 
-export const DISCUSSION_ROUTES: Route[] = [
-    {
-        path: 'discussion/user/:userId',
-        loadChildren: () => import('./pages/discussion/discussion.module')
-            .then(m => m.AddonMessagesDiscussionPageModule),
-    },
-    {
-        path: 'discussion/:conversationId',
-        loadChildren: () => import('./pages/discussion/discussion.module')
-            .then(m => m.AddonMessagesDiscussionPageModule),
-    },
-];
+export const AddonMessagesDiscussionRoute: Route = {
+    path: 'discussion',
+    loadChildren: () => import('./pages/discussion/discussion.module')
+        .then(m => m.AddonMessagesDiscussionPageModule),
+};
 
 function buildRoutes(injector: Injector): Routes {
     return [
@@ -47,7 +40,7 @@ function buildRoutes(injector: Injector): Routes {
             loadChildren: () => import('./pages/group-conversations/group-conversations.module')
                 .then(m => m.AddonMessagesGroupConversationsPageModule),
         },
-        ...DISCUSSION_ROUTES,
+        AddonMessagesDiscussionRoute,
         {
             path: 'search',
             loadChildren: () => import('./pages/search/search.module')

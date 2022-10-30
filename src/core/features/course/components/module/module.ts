@@ -29,7 +29,6 @@ import {
 } from '@features/course/services/module-prefetch-delegate';
 import { CoreConstants } from '@/core/constants';
 import { CoreEventObserver, CoreEvents } from '@singletons/events';
-import { BehaviorSubject } from 'rxjs';
 
 /**
  * Component to display a module entry in a list of modules.
@@ -56,8 +55,8 @@ export class CoreCourseModuleComponent implements OnInit, OnDestroy {
     modNameTranslated = '';
     hasInfo = false;
     showManualCompletion = false; // Whether to show manual completion when completion conditions are disabled.
-    prefetchStatusIcon$ = new BehaviorSubject<string>(''); // Module prefetch status icon.
-    prefetchStatusText$ = new BehaviorSubject<string>(''); // Module prefetch status text.
+    prefetchStatusIcon = ''; // Module prefetch status icon.
+    prefetchStatusText = ''; // Module prefetch status text.
     autoCompletionTodo = false;
     moduleHasView = true;
 
@@ -138,16 +137,16 @@ export class CoreCourseModuleComponent implements OnInit, OnDestroy {
 
         switch (prefetchstatus) {
             case CoreConstants.OUTDATED:
-                this.prefetchStatusIcon$.next(CoreConstants.ICON_OUTDATED);
-                this.prefetchStatusText$.next('core.outdated');
+                this.prefetchStatusIcon = CoreConstants.ICON_OUTDATED;
+                this.prefetchStatusText = 'core.outdated';
                 break;
             case CoreConstants.DOWNLOADED:
-                this.prefetchStatusIcon$.next(CoreConstants.ICON_DOWNLOADED);
-                this.prefetchStatusText$.next('core.downloaded');
+                this.prefetchStatusIcon = CoreConstants.ICON_DOWNLOADED;
+                this.prefetchStatusText = 'core.downloaded';
                 break;
             default:
-                this.prefetchStatusIcon$.next('');
-                this.prefetchStatusText$.next('');
+                this.prefetchStatusIcon = '';
+                this.prefetchStatusText = '';
                 break;
         }
 

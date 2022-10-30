@@ -20,14 +20,13 @@ import { CoreCourseContentsPage } from '@features/course/pages/contents/contents
 import { CoreCourse } from '@features/course/services/course';
 import { CoreCourseModulePrefetchDelegate } from '@features/course/services/module-prefetch-delegate';
 import { CoreApp } from '@services/app';
-import { CoreNetwork } from '@services/network';
 import { CoreFileHelper } from '@services/file-helper';
 import { CoreSites } from '@services/sites';
 import { CoreDomUtils } from '@services/utils/dom';
 import { CoreMimetypeUtils } from '@services/utils/mimetype';
 import { CoreTextUtils } from '@services/utils/text';
 import { CoreUtils, OpenFileAction } from '@services/utils/utils';
-import { NgZone, Translate } from '@singletons';
+import { Network, NgZone, Translate } from '@singletons';
 import { Subscription } from 'rxjs';
 import {
     AddonModResource,
@@ -80,13 +79,13 @@ export class AddonModResourceIndexComponent extends CoreCourseModuleMainResource
         super.ngOnInit();
 
         this.isIOS = CoreApp.isIOS();
-        this.isOnline = CoreNetwork.isOnline();
+        this.isOnline = CoreApp.isOnline();
 
         // Refresh online status when changes.
-        this.onlineObserver = CoreNetwork.onChange().subscribe(() => {
+        this.onlineObserver = Network.onChange().subscribe(() => {
             // Execute the callback in the Angular zone, so change detection doesn't stop working.
             NgZone.run(() => {
-                this.isOnline = CoreNetwork.isOnline();
+                this.isOnline = CoreApp.isOnline();
             });
         });
 
@@ -221,7 +220,7 @@ export class AddonModResourceIndexComponent extends CoreCourseModuleMainResource
         }
 
         // The resource cannot be downloaded, open the activity in browser.
-        await CoreSites.getCurrentSite()?.openInBrowserWithAutoLogin(this.module.url || '');
+        await CoreSites.getCurrentSite()?.openInBrowserWithAutoLoginIfSameSite(this.module.url || '');
     }
 
     /**

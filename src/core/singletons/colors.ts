@@ -35,7 +35,7 @@ export enum CoreIonicColorNames {
     MEDIUM = 'medium',
     LIGHT = 'light',
     NONE = '',
-}
+};
 
 /**
  * Singleton with helper functions for colors.
@@ -93,7 +93,7 @@ export class CoreColors {
      * @return Color in hex format.
      */
     static getColorHex(color: string): string {
-        const rgba = CoreColors.getColorRGBA(color);
+        const rgba = CoreColors.getColorRGBA(color, true);
         if (rgba.length === 0) {
             return '';
         }
@@ -109,20 +109,21 @@ export class CoreColors {
      * Returns RGBA color from any color format.
      *
      * @param color Color in any format.
+     * @param createElement Wether create a new element is needed to calculate value.
      * @return Red, green, blue and alpha.
      */
-    static getColorRGBA(color: string): number[] {
-        if (!color.match(/rgba?\(.*\)/)) {
-            // Convert the color to RGB format.
+    static getColorRGBA(color: string, createElement = false): number[] {
+        if (createElement) {
             const d = document.createElement('span');
             d.style.color = color;
             document.body.appendChild(d);
 
+            // Color in RGB.
             color = getComputedStyle(d).color;
             document.body.removeChild(d);
         }
 
-        const matches = color.match(/\d+[^.]|\d*\.\d*/g) || [];
+        const matches = color.match(/\d+/g) || [];
 
         return matches.map((a, index) => index < 3 ? parseInt(a, 10) : parseFloat(a));
     }

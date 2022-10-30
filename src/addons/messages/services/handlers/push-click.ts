@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { Injectable } from '@angular/core';
+import { Params } from '@angular/router';
 import { CorePushNotificationsClickHandler } from '@features/pushnotifications/services/push-delegate';
 import { CorePushNotificationsNotificationBasicData } from '@features/pushnotifications/services/pushnotifications';
 import { CoreNavigator } from '@services/navigator';
@@ -62,22 +63,28 @@ export class AddonMessagesPushClickHandlerService implements CorePushNotificatio
         // Check if group messaging is enabled, to determine which page should be loaded.
         const enabled = await AddonMessages.isGroupMessagingEnabledInSite(notification.site);
 
-        let conversationId: number | undefined;
-        let userId: number | undefined;
+        let nextPageParams: Params | undefined;
 
         // Check if we have enough information to open the conversation.
         if (notification.convid && enabled) {
-            conversationId = Number(notification.convid);
+            nextPageParams = {
+                conversationId: Number(notification.convid),
+            };
         } else if (notification.userfromid) {
-            userId = Number(notification.userfromid);
+            nextPageParams = {
+                userId: Number(notification.userfromid),
+            };
         }
 
         await CoreNavigator.navigateToSitePath(AddonMessagesMainMenuHandlerService.PAGE_NAME, {
             siteId: notification.site,
             preferCurrentTab: false,
-            nextNavigation: conversationId ?
-                { path: `discussion/${conversationId}` } :
-                (userId ? { path: `discussion/user/${userId}` } : undefined),
+            nextNavigation: nextPageParams ?
+                {
+                    path: 'discussion',
+                    options: { params: nextPageParams },
+                } :
+                undefined,
         });
     }
 

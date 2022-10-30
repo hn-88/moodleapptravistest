@@ -119,7 +119,7 @@ export class AddonModWorkshopAssessmentStrategyComponent implements OnInit, OnDe
 
             // Load Weights selector.
             if (this.edit && this.access.canallocate) {
-                this.weights = [];
+                this.weights;
                 for (let i = 16; i >= 0; i--) {
                     this.weights[i] = i;
                 }
@@ -135,7 +135,8 @@ export class AddonModWorkshopAssessmentStrategyComponent implements OnInit, OnDe
                 await this.load();
                 this.obsInvalidated = CoreEvents.on(
                     AddonModWorkshopProvider.ASSESSMENT_INVALIDATED,
-                    () => this.load(),
+                    this.load.bind(this),
+
                     CoreSites.getCurrentSiteId(),
                 );
             } catch (error) {
@@ -346,6 +347,8 @@ export class AddonModWorkshopAssessmentStrategyComponent implements OnInit, OnDe
                     this.workshop.course,
                     assessmentData,
                 );
+
+                gradeUpdated = false;
             } else {
 
                 // Try to send it to server.

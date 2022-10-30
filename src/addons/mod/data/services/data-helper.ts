@@ -19,7 +19,7 @@ import { CoreFileUploader, CoreFileUploaderStoreFilesResult } from '@features/fi
 import { CoreRatingOffline } from '@features/rating/services/rating-offline';
 import { FileEntry } from '@ionic-native/file/ngx';
 import { CoreSites, CoreSitesReadingStrategy } from '@services/sites';
-import { CoreDomUtils, ToastDuration } from '@services/utils/dom';
+import { CoreDomUtils } from '@services/utils/dom';
 import { CoreFormFields } from '@singletons/form';
 import { CoreTextUtils } from '@services/utils/text';
 import { CoreUtils } from '@services/utils/utils';
@@ -173,11 +173,7 @@ export class AddonModDataHelperProvider {
 
             CoreEvents.trigger(AddonModDataProvider.ENTRY_CHANGED, { dataId: dataId, entryId: entryId }, siteId);
 
-            CoreDomUtils.showToast(
-                approve ? 'addon.mod_data.recordapproved' : 'addon.mod_data.recorddisapproved',
-                true,
-                ToastDuration.LONG,
-            );
+            CoreDomUtils.showToast(approve ? 'addon.mod_data.recordapproved' : 'addon.mod_data.recorddisapproved', true, 3000);
         } catch {
             // Ignore error, it was already displayed.
         } finally {
@@ -723,13 +719,13 @@ export class AddonModDataHelperProvider {
             try {
                 await AddonModData.invalidateEntryData(dataId, entryId, siteId);
                 await AddonModData.invalidateEntriesData(dataId, siteId);
-            } catch {
+            } catch (error) {
                 // Ignore errors.
             }
 
             CoreEvents.trigger(AddonModDataProvider.ENTRY_CHANGED, { dataId, entryId, deleted: true }, siteId);
 
-            CoreDomUtils.showToast('addon.mod_data.recorddeleted', true, ToastDuration.LONG);
+            CoreDomUtils.showToast('addon.mod_data.recorddeleted', true, 3000);
 
             modal.dismiss();
         } catch {

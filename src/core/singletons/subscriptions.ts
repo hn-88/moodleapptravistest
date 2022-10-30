@@ -13,8 +13,7 @@
 // limitations under the License.
 
 import { EventEmitter } from '@angular/core';
-import { CoreUtils } from '@services/utils/utils';
-import { Observable, Subscription } from 'rxjs';
+import { Observable } from 'rxjs';
 
 /**
  * Subscribable object.
@@ -32,47 +31,22 @@ export class CoreSubscriptions {
      * @param subscribable Subscribable to listen to.
      * @param onSuccess Callback to run when the subscription is updated.
      * @param onError Callback to run when the an error happens.
-     * @param onComplete Callback to run when the observable completes.
-     * @return A function to unsubscribe.
      */
-    static once<T>(
-        subscribable: Subscribable<T>,
-        onSuccess: (value: T) => unknown,
-        onError?: (error: unknown) => unknown,
-        onComplete?: () => void,
-    ): () => void {
-        let callbackCalled = false;
-        let subscription: Subscription | null = null;
-
-        const runCallback = (callback) => {
-            if (!callbackCalled) {
-                callbackCalled = true;
-                callback();
-            }
-        };
-        const unsubscribe = async () => {
-            // Subscription variable might not be set because we can receive a value immediately. Wait for next tick.
-            await CoreUtils.nextTick();
-
-            subscription?.unsubscribe();
-        };
-
-        subscription = subscribable.subscribe(
+    static once<T>(subscribable: Subscribable<T>, onSuccess: (value: T) => unknown, onError?: (error: unknown) => unknown): void {
+        const subscription = subscribable.subscribe(
             value => {
-                unsubscribe();
-                runCallback(() => onSuccess(value));
+                // Unsubscribe using a timeout because we can receive a value immediately.
+                setTimeout(() => subscription.unsubscribe(), 0);
+
+                onSuccess(value);
             },
             error => {
-                unsubscribe();
-                runCallback(() => onError?.(error));
-            },
-            () => {
-                unsubscribe();
-                runCallback(() => onComplete?.());
+                // Unsubscribe using a timeout because we can receive a value immediately.
+                setTimeout(() => subscription.unsubscribe(), 0);
+
+                onError && onError(error);
             },
         );
-
-        return () => subscription?.unsubscribe();
     }
 
 }

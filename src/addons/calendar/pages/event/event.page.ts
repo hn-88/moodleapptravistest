@@ -23,25 +23,22 @@ import {
 import { AddonCalendarEventReminder, AddonCalendarHelper } from '../../services/calendar-helper';
 import { AddonCalendarOffline } from '../../services/calendar-offline';
 import { AddonCalendarSync, AddonCalendarSyncEvents, AddonCalendarSyncProvider } from '../../services/calendar-sync';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreEventObserver, CoreEvents } from '@singletons/events';
-import { CoreDomUtils, ToastDuration } from '@services/utils/dom';
+import { CoreDomUtils } from '@services/utils/dom';
 import { CoreTextUtils } from '@services/utils/text';
 import { CoreSites } from '@services/sites';
 import { CoreLocalNotifications } from '@services/local-notifications';
 import { CoreCourse } from '@features/course/services/course';
 import { CoreTimeUtils } from '@services/utils/time';
 import { CoreGroups } from '@services/groups';
-import { NgZone, Translate } from '@singletons';
+import { Network, NgZone, Translate } from '@singletons';
 import { Subscription } from 'rxjs';
 import { CoreNavigator } from '@services/navigator';
 import { CoreUtils } from '@services/utils/utils';
-import { ActivatedRoute, ActivatedRouteSnapshot } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { CoreConstants } from '@/core/constants';
 import { AddonCalendarReminderTimeModalComponent } from '@addons/calendar/components/reminder-time-modal/reminder-time-modal';
-import { CoreRoutedItemsManagerSourcesTracker } from '@classes/items-management/routed-items-manager-sources-tracker';
-import { AddonCalendarEventsSource } from '@addons/calendar/classes/events-source';
-import { CoreSwipeNavigationItemsManager } from '@classes/items-management/swipe-navigation-items-manager';
 
 /**
  * Page that displays a single calendar event.
@@ -66,7 +63,6 @@ export class AddonCalendarEventPage implements OnInit, OnDestroy {
 
     eventLoaded = false;
     event?: AddonCalendarEventToDisplay;
-    events?: CoreSwipeNavigationItemsManager;
     courseId?: number;
     courseName = '';
     groupName?: string;
@@ -111,22 +107,22 @@ export class AddonCalendarEventPage implements OnInit, OnDestroy {
         // Refresh data if this calendar event is synchronized automatically.
         this.syncObserver = CoreEvents.on(
             AddonCalendarSyncProvider.AUTO_SYNCED,
-            (data) => this.checkSyncResult(false, data),
+            this.checkSyncResult.bind(this, false),
             this.currentSiteId,
         );
 
         // Refresh data if calendar events are synchronized manually but not by this page.
         this.manualSyncObserver = CoreEvents.on(
             AddonCalendarSyncProvider.MANUAL_SYNCED,
-            (data) => this.checkSyncResult(true, data),
+            this.checkSyncResult.bind(this, true),
             this.currentSiteId,
         );
 
         // Refresh online status when changes.
-        this.onlineObserver = CoreNetwork.onChange().subscribe(() => {
+        this.onlineObserver = Network.onChange().subscribe(() => {
             // Execute the callback in the Angular zone, so change detection doesn't stop working.
             NgZone.run(() => {
-                this.isOnline = CoreNetwork.isOnline();
+                this.isOnline = CoreApp.isOnline();
             });
         });
 
@@ -159,7 +155,7 @@ export class AddonCalendarEventPage implements OnInit, OnDestroy {
     /**
      * View loaded.
      */
-    async ngOnInit(): Promise<void> {
+    ngOnInit(): void {
         try {
             this.eventId = CoreNavigator.getRequiredRouteNumberParam('id');
         } catch (error) {
@@ -172,8 +168,7 @@ export class AddonCalendarEventPage implements OnInit, OnDestroy {
 
         this.syncIcon = CoreConstants.ICON_LOADING;
 
-        await this.initializeSwipeManager();
-        await this.fetchEvent();
+        this.fetchEvent();
     }
 
     /**
@@ -184,7 +179,7 @@ export class AddonCalendarEventPage implements OnInit, OnDestroy {
      * @return Promise resolved when done.
      */
     async fetchEvent(sync = false, showErrors = false): Promise<void> {
-        this.isOnline = CoreNetwork.isOnline();
+        this.isOnline = CoreApp.isOnline();
 
         if (sync) {
             const deleted = await this.syncEvents(showErrors);
@@ -198,7 +193,7 @@ export class AddonCalendarEventPage implements OnInit, OnDestroy {
             // Get the event data.
             if (this.eventId >= 0) {
                 const event = await AddonCalendar.getEventById(this.eventId);
-                this.event = AddonCalendarHelper.formatEventData(event);
+                this.event = await AddonCalendarHelper.formatEventData(event);
             }
 
             try {
@@ -295,25 +290,6 @@ export class AddonCalendarEventPage implements OnInit, OnDestroy {
 
         this.eventLoaded = true;
         this.syncIcon = CoreConstants.ICON_SYNC;
-    }
-
-    /**
-     * Initialize swipe manager if enabled.
-     */
-    protected async initializeSwipeManager(): Promise<void> {
-        const date = CoreNavigator.getRouteParam('date');
-        const source = date && CoreRoutedItemsManagerSourcesTracker.getSource(
-            AddonCalendarEventsSource,
-            [date],
-        );
-
-        if (!source) {
-            return;
-        }
-
-        this.events = new AddonCalendarEventsSwipeItemsManager(source);
-
-        await this.events.start();
     }
 
     /**
@@ -556,7 +532,7 @@ export class AddonCalendarEventPage implements OnInit, OnDestroy {
             }
 
             if (onlineEventDeleted || this.event.id < 0) {
-                CoreDomUtils.showToast('addon.calendar.eventcalendareventdeleted', true, ToastDuration.LONG);
+                CoreDomUtils.showToast('addon.calendar.eventcalendareventdeleted', true, 3000);
 
                 // Event deleted, close the view.
                 CoreNavigator.back();
@@ -611,7 +587,7 @@ export class AddonCalendarEventPage implements OnInit, OnDestroy {
         }
 
         if (data.deleted && data.deleted.indexOf(this.eventId) != -1) {
-            CoreDomUtils.showToast('addon.calendar.eventcalendareventdeleted', true, ToastDuration.LONG);
+            CoreDomUtils.showToast('addon.calendar.eventcalendareventdeleted', true, 3000);
 
             // Event was deleted, close the view.
             CoreNavigator.back();
@@ -644,22 +620,7 @@ export class AddonCalendarEventPage implements OnInit, OnDestroy {
         this.manualSyncObserver.off();
         this.onlineObserver.unsubscribe();
         this.newEventObserver.off();
-        this.events?.destroy();
         clearInterval(this.updateCurrentTime);
-    }
-
-}
-
-/**
- * Helper to manage swiping within a collection of events.
- */
-class AddonCalendarEventsSwipeItemsManager extends CoreSwipeNavigationItemsManager {
-
-    /**
-     * @inheritdoc
-     */
-    protected getSelectedItemPathFromRoute(route: ActivatedRouteSnapshot): string | null {
-        return route.params.id;
     }
 
 }

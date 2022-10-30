@@ -14,7 +14,7 @@
 
 import { Injectable } from '@angular/core';
 
-import moment, { LongDateFormatKey } from 'moment-timezone';
+import moment, { LongDateFormatKey } from 'moment';
 import { makeSingleton, Translate } from '@singletons';
 import { CoreTime } from '@singletons/time';
 
@@ -170,7 +170,7 @@ export class CoreTimeUtilsProvider {
     /**
      * Converts a number of seconds into a short human readable format: minutes and seconds, in fromat: 3' 27''.
      *
-     * @param duration Seconds
+     * @param seconds Seconds
      * @return Short human readable text.
      * @deprecated since app 4.0. Use CoreTime.formatTimeShort instead.
      */
@@ -255,7 +255,9 @@ export class CoreTimeUtilsProvider {
      * @return Formatted time.
      */
     toDatetimeFormat(timestamp?: number): string {
-        return moment(timestamp || Date.now()).toISOString();
+        timestamp = timestamp || Date.now();
+
+        return this.userDate(timestamp, 'YYYY-MM-DDTHH:mm:ss.SSS', false) + 'Z';
     }
 
     /**

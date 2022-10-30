@@ -21,13 +21,13 @@ import { CoreCourse } from '@features/course/services/course';
 import { CoreTag, CoreTagItem } from '@features/tag/services/tag';
 import { CoreUser } from '@features/user/services/user';
 import { IonContent } from '@ionic/angular';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreGroup, CoreGroups } from '@services/groups';
 import { CoreNavigator } from '@services/navigator';
 import { CoreSites } from '@services/sites';
 import { CoreDomUtils } from '@services/utils/dom';
 import { CoreUtils } from '@services/utils/utils';
-import { Translate, NgZone } from '@singletons';
+import { Network, Translate, NgZone } from '@singletons';
 import { CoreEventObserver, CoreEvents } from '@singletons/events';
 import { CoreText } from '@singletons/text';
 import { Subscription } from 'rxjs';
@@ -116,13 +116,13 @@ export class AddonModWikiIndexComponent extends CoreCourseModuleMainActivityComp
     ) {
         super('AddonModLessonIndexComponent', content, courseContentsPage);
 
-        this.isOnline = CoreNetwork.isOnline();
+        this.isOnline = CoreApp.isOnline();
 
         // Refresh online status when changes.
-        this.onlineSubscription = CoreNetwork.onChange().subscribe(() => {
+        this.onlineSubscription = Network.onChange().subscribe(() => {
             // Execute the callback in the Angular zone, so change detection doesn't stop working.
             NgZone.run(() => {
-                this.isOnline = CoreNetwork.isOnline();
+                this.isOnline = CoreApp.isOnline();
             });
         });
     }
@@ -248,10 +248,6 @@ export class AddonModWikiIndexComponent extends CoreCourseModuleMainActivityComp
                 // Not found in cache, create a new one.
                 // Get real groupmode, in case it's forced by the course.
                 const groupInfo = await CoreGroups.getActivityGroupInfo(this.wiki.coursemodule);
-
-                if (groupInfo.separateGroups && !groupInfo.groups.length) {
-                    throw new CoreError(Translate.instant('addon.mod_wiki.cannotviewpage'));
-                }
 
                 await this.createSubwikiList(groupInfo.groups);
             } else {
@@ -871,7 +867,7 @@ export class AddonModWikiIndexComponent extends CoreCourseModuleMainActivityComp
      * @param userGroups Groups.
      * @return Promise resolved when done.
      */
-    protected async createSubwikiList(userGroups: CoreGroup[]): Promise<void> {
+    protected async createSubwikiList(userGroups?: CoreGroup[]): Promise<void> {
         const subwikiList: AddonModWikiSubwikiListSubwiki[] = [];
         let allParticipants = false;
         let showMyGroupsLabel = false;
@@ -899,7 +895,7 @@ export class AddonModWikiIndexComponent extends CoreCourseModuleMainActivityComp
                     allParticipants = true;
                 }
             } else {
-                if (subwiki.groupid != 0 && userGroups.length > 0) {
+                if (subwiki.groupid != 0 && userGroups && userGroups.length > 0) {
                     // Get groupLabel if it has groupId.
                     const group = userGroups.find(group => group.id == subwiki.groupid);
                     groupLabel = group?.name || '';

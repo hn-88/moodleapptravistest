@@ -22,7 +22,7 @@ import {
     AddonCalendarGetActionEventsByTimesortWSParams,
     AddonCalendarGetActionEventsByCoursesWSParams,
 } from '@addons/calendar/services/calendar';
-import moment from 'moment-timezone';
+import moment from 'moment';
 import { makeSingleton } from '@singletons';
 import { CoreSiteWSPreSets } from '@classes/site';
 
@@ -107,10 +107,6 @@ export class AddonBlockTimelineProvider {
         searchValue = '',
         siteId?: string,
     ): Promise<{[courseId: string]: { events: AddonCalendarEvent[]; canLoadMore?: number } }> {
-        if (courseIds.length === 0) {
-            return {};
-        }
-
         const site = await CoreSites.getSite(siteId);
 
         const time = this.getDayStart(-14); // Check two weeks ago.

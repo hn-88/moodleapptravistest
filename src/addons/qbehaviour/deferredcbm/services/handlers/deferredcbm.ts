@@ -55,8 +55,8 @@ export class AddonQbehaviourDeferredCBMHandlerService implements CoreQuestionBeh
             question,
             componentId,
             siteId,
-            (...args) => this.isCompleteResponse(...args),
-            (...args) => this.isSameResponse(...args),
+            this.isCompleteResponse.bind(this),
+            this.isSameResponse.bind(this),
         );
     }
 

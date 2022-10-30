@@ -41,14 +41,14 @@ import {
 import { AddonCalendarFilter, AddonCalendarHelper } from '../../services/calendar-helper';
 import { AddonCalendarOffline } from '../../services/calendar-offline';
 import { CoreCategoryData, CoreCourses } from '@features/courses/services/courses';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreSwipeSlidesComponent } from '@components/swipe-slides/swipe-slides';
 import {
     CoreSwipeSlidesDynamicItem,
     CoreSwipeSlidesDynamicItemsManagerSource,
 } from '@classes/items-management/swipe-slides-dynamic-items-manager-source';
 import { CoreSwipeSlidesDynamicItemsManager } from '@classes/items-management/swipe-slides-dynamic-items-manager';
-import moment from 'moment-timezone';
+import moment from 'moment';
 
 /**
  * Component that displays a calendar.
@@ -498,7 +498,7 @@ class AddonCalendarMonthSlidesItemsManagerSource extends CoreSwipeSlidesDynamicI
                 // Don't pass courseId and categoryId, we'll filter them locally.
                 result = await AddonCalendar.getMonthlyEvents(year, monthNumber);
             } catch (error) {
-                if (!CoreNetwork.isOnline()) {
+                if (!CoreApp.isOnline()) {
                     // Allow navigating to non-cached months in offline (behave as if using emergency cache).
                     result = await AddonCalendarHelper.getOfflineMonthWeeks(year, monthNumber);
                 } else {
@@ -509,7 +509,7 @@ class AddonCalendarMonthSlidesItemsManagerSource extends CoreSwipeSlidesDynamicI
 
         const weekDays = AddonCalendar.getWeekDays(result.daynames[0].dayno);
         const weeks = result.weeks as AddonCalendarWeek[];
-        const currentDay = moment().date();
+        const currentDay = new Date().getDate();
         const currentTime = CoreTimeUtils.timestamp();
 
         const preloadedMonth: PreloadedMonth = {
@@ -529,7 +529,9 @@ class AddonCalendarMonthSlidesItemsManagerSource extends CoreSwipeSlidesDynamicI
                 day.eventsFormated = day.eventsFormated || [];
                 day.filteredEvents = day.filteredEvents || [];
                 // Format online events.
-                const onlineEventsFormatted = day.events.map((event) => AddonCalendarHelper.formatEventData(event));
+                const onlineEventsFormatted = await Promise.all(
+                    day.events.map(async (event) => AddonCalendarHelper.formatEventData(event)),
+                );
 
                 day.eventsFormated = day.eventsFormated.concat(onlineEventsFormatted);
 

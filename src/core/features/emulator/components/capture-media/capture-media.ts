@@ -17,16 +17,16 @@ import { MediaObject } from '@ionic-native/media/ngx';
 import { FileEntry } from '@ionic-native/file/ngx';
 import { MediaFile } from '@ionic-native/media-capture/ngx';
 
+import { CoreApp } from '@services/app';
 import { CoreFile, CoreFileProvider } from '@services/file';
 import { CoreDomUtils } from '@services/utils/dom';
 import { CoreMimetypeUtils } from '@services/utils/mimetype';
 import { CoreTimeUtils } from '@services/utils/time';
-import { ModalController, Media, Translate } from '@singletons';
+import { Platform, ModalController, Media, Translate } from '@singletons';
 import { CoreError } from '@classes/errors/error';
 import { CoreCaptureError } from '@classes/errors/captureerror';
 import { CoreCanceledError } from '@classes/errors/cancelederror';
 import { CoreText } from '@singletons/text';
-import { CorePlatform } from '@services/platform';
 
 /**
  * Page to capture media in browser, or to capture audio in mobile devices.
@@ -116,10 +116,10 @@ export class CoreEmulatorCaptureMediaComponent implements OnInit, OnDestroy {
             this.title = 'core.captureimage';
         }
 
-        this.isCordovaAudioCapture = CorePlatform.isMobile() && this.isAudio;
+        this.isCordovaAudioCapture = CoreApp.isMobile() && this.isAudio;
 
         if (this.isCordovaAudioCapture) {
-            this.extension = CorePlatform.is('ios') ? 'wav' : 'aac';
+            this.extension = Platform.is('ios') ? 'wav' : 'aac';
             this.returnDataUrl = false;
         }
     }
@@ -153,7 +153,7 @@ export class CoreEmulatorCaptureMediaComponent implements OnInit, OnDestroy {
         // Now create the media instance.
         let absolutePath = CoreText.concatenatePaths(CoreFile.getBasePathInstant(), this.filePath);
 
-        if (CorePlatform.is('ios')) {
+        if (Platform.is('ios')) {
             // In iOS we need to remove the file:// part.
             absolutePath = absolutePath.replace(/^file:\/\//, '');
         }

@@ -171,8 +171,6 @@ export class SQLiteDBMock extends SQLiteDB {
      * @inheritdoc
      */
     protected getDatabaseSpies(db: SQLiteObject): Partial<SQLiteObject> {
-        const dbName = this.name;
-
         return {
             transaction: (callback) => db.transaction((transaction) => {
                 const transactionSpy: DbTransaction = {
@@ -187,7 +185,6 @@ export class SQLiteDBMock extends SQLiteDB {
                                     sql,
                                     params,
                                     duration: performance.now() - start,
-                                    dbName,
                                 });
 
                                 return success?.(...args);
@@ -198,7 +195,6 @@ export class SQLiteDBMock extends SQLiteDB {
                                     params,
                                     error: args[0],
                                     duration: performance.now() - start,
-                                    dbName,
                                 });
 
                                 return error?.(...args);

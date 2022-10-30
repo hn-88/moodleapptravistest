@@ -21,7 +21,7 @@ import { CoreCourseCommonModWSOptions } from '@features/course/services/course';
 import { CoreCourseLogHelper } from '@features/course/services/log-helper';
 import { CoreFileUploaderStoreFilesResult } from '@features/fileuploader/services/fileuploader';
 import { CoreRatingSync } from '@features/rating/services/rating-sync';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreFileEntry } from '@services/file-helper';
 import { CoreSites, CoreSitesReadingStrategy } from '@services/sites';
 import { CoreSync } from '@services/sync';
@@ -66,7 +66,7 @@ export class AddonModDataSyncProvider extends CoreCourseActivitySyncBaseProvider
      * @return Promise resolved if sync is successful, rejected if sync fails.
      */
     syncAllDatabases(siteId?: string, force?: boolean): Promise<void> {
-        return this.syncOnSites('all databases', (siteId) => this.syncAllDatabasesFunc(!!force, siteId), siteId);
+        return this.syncOnSites('all databases', this.syncAllDatabasesFunc.bind(this, !!force), siteId);
     }
 
     /**
@@ -184,7 +184,7 @@ export class AddonModDataSyncProvider extends CoreCourseActivitySyncBaseProvider
             return result;
         }
 
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             // Cannot sync in offline.
             throw new CoreNetworkError();
         }

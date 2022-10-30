@@ -326,7 +326,7 @@ export class CoreCourseModuleDelegateService extends CoreDelegate<CoreCourseModu
         courseId: number,
         options?: CoreNavigationOptions,
     ): Promise<void> {
-        return this.executeFunctionOnEnabled<void>(
+        return await this.executeFunctionOnEnabled<void>(
             modname,
             'openActivityPage',
             [module, courseId, options],
@@ -391,7 +391,7 @@ export class CoreCourseModuleDelegateService extends CoreDelegate<CoreCourseModu
     async getModuleIconSrc(modname: string, modicon?: string, module?: CoreCourseModuleData): Promise<string> {
         const icon = await this.executeFunctionOnEnabled<Promise<string>>(modname, 'getIconSrc', [module]);
 
-        return icon || CoreCourse.getModuleIconSrc(modname, modicon) || '';
+        return icon || await CoreCourse.getModuleIconSrc(modname, modicon) || '';
     }
 
     /**

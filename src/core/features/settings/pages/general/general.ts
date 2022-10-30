@@ -41,7 +41,7 @@ export class CoreSettingsGeneralPage {
     languages: { code: string; name: string }[] = [];
     selectedLanguage = '';
     zoomLevels: { value: CoreZoomLevel; style: number; selected: boolean }[] = [];
-    selectedZoomLevel = CoreZoomLevel.NONE;
+    selectedZoomLevel = CoreZoomLevel.NORMAL;
     richTextEditor = true;
     debugDisplay = false;
     analyticsSupported = false;

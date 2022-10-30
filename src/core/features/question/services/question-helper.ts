@@ -291,18 +291,13 @@ export class CoreQuestionHelperProvider {
             return;
         }
 
-        matches.forEach((scriptCode) => {
-            if (scriptCode.match(/<script[^>]+type="math\/tex"/m)) {
-                // Don't remove math/tex scripts, they're needed to render the math expressions.
-                return;
-            }
-
+        matches.forEach((match: string) => {
             // Add the script to scriptsCode and remove it from html.
-            question.scriptsCode += scriptCode;
-            question.html = question.html.replace(scriptCode, '');
+            question.scriptsCode += match;
+            question.html = question.html.replace(match, '');
 
             // Search init_question functions for this type.
-            const initMatches = scriptCode.match(new RegExp('M.qtype_' + question.type + '.init_question\\(.*?}\\);', 'mg'));
+            const initMatches = match.match(new RegExp('M.qtype_' + question.type + '.init_question\\(.*?}\\);', 'mg'));
             if (initMatches) {
                 let initMatch = initMatches.pop()!;
 
@@ -317,7 +312,7 @@ export class CoreQuestionHelperProvider {
             const amdRegExp = new RegExp('require\\(\\[["\']qtype_' + question.type + '/question["\']\\],[^f]*' +
                 'function\\(amd\\)[^\\{]*\\{[^a]*amd\\.init\\((["\'](q|question-' + usageId + '-)' + question.slot +
                 '["\'].*?)\\);', 'm');
-            const amdMatch = scriptCode.match(amdRegExp);
+            const amdMatch = match.match(amdRegExp);
 
             if (amdMatch) {
                 // Try to convert the arguments to an array and add them to the question.

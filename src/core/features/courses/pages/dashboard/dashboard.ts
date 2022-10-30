@@ -36,7 +36,6 @@ export class CoreCoursesDashboardPage implements OnInit, OnDestroy {
 
     @ViewChildren(CoreBlockComponent) blocksComponents?: QueryList<CoreBlockComponent>;
 
-    hasMainBlocks = false;
     hasSideBlocks = false;
     searchEnabled = false;
     downloadCourseEnabled = false;
@@ -85,7 +84,6 @@ export class CoreCoursesDashboardPage implements OnInit, OnDestroy {
 
                 this.blocks = blocks.mainBlocks;
 
-                this.hasMainBlocks = CoreBlockDelegate.hasSupportedBlock(blocks.mainBlocks);
                 this.hasSideBlocks = CoreBlockDelegate.hasSupportedBlock(blocks.sideBlocks);
             } catch (error) {
                 CoreDomUtils.showErrorModal(error);

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { CoreStyles, renderInlineStyles } from '@/core/utils/style-helpers';
-import { CorePlatform } from '@services/platform';
+import { Platform } from '@singletons';
 import { CoreUserToursAlignment, CoreUserToursSide } from '../services/user-tours';
 
 const ARROW_HEIGHT = 22;
@@ -54,12 +54,8 @@ export class CoreUserToursPopoverLayout {
             [CoreUserToursSide.Bottom]: this.calculateWrapperBottomSideStyles,
             [CoreUserToursSide.Right]: this.calculateWrapperRightSideStyles,
             [CoreUserToursSide.Left]: this.calculateWrapperLeftSideStyles,
-            [CoreUserToursSide.Start]: CorePlatform.isRTL
-                ? this.calculateWrapperRightSideStyles
-                : this.calculateWrapperLeftSideStyles,
-            [CoreUserToursSide.End]: CorePlatform.isRTL
-                ? this.calculateWrapperLeftSideStyles
-                : this.calculateWrapperRightSideStyles,
+            [CoreUserToursSide.Start]: Platform.isRTL ? this.calculateWrapperRightSideStyles : this.calculateWrapperLeftSideStyles,
+            [CoreUserToursSide.End]: Platform.isRTL ? this.calculateWrapperLeftSideStyles : this.calculateWrapperRightSideStyles,
         };
 
         sideHandlers[this.side].call(this);
@@ -73,11 +69,11 @@ export class CoreUserToursPopoverLayout {
      */
     private calculateWrapperHorizontalAlignmentStyles(): void {
         const horizontalAlignmentHandlers: Record<CoreUserToursAlignment, () => void> ={
-            [CoreUserToursAlignment.Start]: CorePlatform.isRTL
+            [CoreUserToursAlignment.Start]: Platform.isRTL
                 ? this.calculateWrapperRightAlignmentStyles
                 : this.calculateWrapperLeftAlignmentStyles,
             [CoreUserToursAlignment.Center]: this.calculateWrapperCenterHorizontalAlignmentStyles,
-            [CoreUserToursAlignment.End]: CorePlatform.isRTL
+            [CoreUserToursAlignment.End]: Platform.isRTL
                 ? this.calculateWrapperLeftAlignmentStyles
                 : this.calculateWrapperRightAlignmentStyles,
         };

@@ -24,13 +24,13 @@ import { CoreRatingSyncProvider } from '@features/rating/services/rating-sync';
 import { CoreUser } from '@features/user/services/user';
 import { CanLeave } from '@guards/can-leave';
 import { IonContent, IonRefresher } from '@ionic/angular';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreNavigator } from '@services/navigator';
 import { CoreScreen } from '@services/screen';
 import { CoreSites } from '@services/sites';
 import { CoreDomUtils } from '@services/utils/dom';
 import { CoreUtils } from '@services/utils/utils';
-import { NgZone, Translate } from '@singletons';
+import { Network, NgZone, Translate } from '@singletons';
 import { CoreArray } from '@singletons/array';
 import { CoreDom } from '@singletons/dom';
 import { CoreEventObserver, CoreEvents } from '@singletons/events';
@@ -164,12 +164,12 @@ export class AddonModForumDiscussionPage implements OnInit, AfterViewInit, OnDes
             return;
         }
 
-        this.isOnline = CoreNetwork.isOnline();
+        this.isOnline = CoreApp.isOnline();
         this.externalUrl = CoreSites.getCurrentSite()?.createSiteUrl('/mod/forum/discuss.php', { d: this.discussionId.toString() });
-        this.onlineObserver = CoreNetwork.onChange().subscribe(() => {
+        this.onlineObserver = Network.onChange().subscribe(() => {
             // Execute the callback in the Angular zone, so change detection doesn't stop working.
             NgZone.run(() => {
-                this.isOnline = CoreNetwork.isOnline();
+                this.isOnline = CoreApp.isOnline();
             });
         });
 
@@ -358,7 +358,7 @@ export class AddonModForumDiscussionPage implements OnInit, AfterViewInit, OnDes
                         // Not set, use default sort.
                         // @TODO add fallback to $CFG->forum_displaymode.
                 }
-            } catch {
+            } catch (error) {
                 // Ignore errors.
             }
         }
@@ -511,7 +511,7 @@ export class AddonModForumDiscussionPage implements OnInit, AfterViewInit, OnDes
                 }
 
                 await Promise.all(promises);
-            } catch {
+            } catch (error) {
                 // Ignore errors.
             }
 

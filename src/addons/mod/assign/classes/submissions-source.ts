@@ -126,7 +126,7 @@ export class AddonModAssignSubmissionsSource extends CoreRoutedItemsManagerSourc
                         CoreSites.getCurrentSiteId(),
                     );
                 }
-            } catch {
+            } catch (error) {
                 // Ignore errors, probably user is offline or sync is blocked.
             }
         }
@@ -259,4 +259,4 @@ export enum AddonModAssignListFilterName {
     NEED_GRADING = 'needgrading',
     DRAFT = 'draft',
     SUBMITTED = 'submitted',
-}
+};

@@ -98,7 +98,7 @@ export class CoreGradesHelperProvider {
      * @param tableRow JSON object representing row of grades table data.
      * @return Formatted row object.
      */
-    protected formatGradeRowForTable(tableRow: CoreGradesTableRow): CoreGradesFormattedTableRow {
+    protected async formatGradeRowForTable(tableRow: CoreGradesTableRow): Promise<CoreGradesFormattedTableRow> {
         const row: CoreGradesFormattedTableRow = {};
         for (let name in tableRow) {
             const column: CoreGradesTableColumn = tableRow[name];
@@ -116,7 +116,7 @@ export class CoreGradesHelperProvider {
                 row.colspan = itemNameColumn.colspan;
                 row.rowspan = tableRow.leader?.rowspan || 1;
 
-                this.setRowIcon(row, content);
+                await this.setRowIcon(row, content);
                 row.rowclass = itemNameColumn.class.indexOf('leveleven') < 0 ? 'odd' : 'even';
                 row.rowclass += itemNameColumn.class.indexOf('hidden') >= 0 ? ' hidden' : '';
                 row.rowclass += itemNameColumn.class.indexOf('dimmed_text') >= 0 ? ' dimmed_text' : '';
@@ -182,7 +182,7 @@ export class CoreGradesHelperProvider {
      * @param table JSON object representing a table with data.
      * @return Formatted HTML table.
      */
-    formatGradesTable(table: CoreGradesTable): CoreGradesFormattedTable {
+    async formatGradesTable(table: CoreGradesTable): Promise<CoreGradesFormattedTable> {
         const maxDepth = table.maxdepth;
         const formatted: CoreGradesFormattedTable = {
             columns: [],
@@ -202,7 +202,7 @@ export class CoreGradesHelperProvider {
             feedback: false,
             contributiontocoursetotal: false,
         };
-        formatted.rows = table.tabledata.map(row => this.formatGradeRowForTable(row));
+        formatted.rows = await Promise.all(table.tabledata.map(row => this.formatGradeRowForTable(row)));
 
         // Get a row with some info.
         let normalRow = formatted.rows.find(
@@ -442,7 +442,7 @@ export class CoreGradesHelperProvider {
         // Find href containing "/mod/xxx/xxx.php".
         const regex = /href="([^"]*\/mod\/[^"|^/]*\/[^"|^.]*\.php[^"]*)/;
 
-        return Promise.all(table.tabledata.filter((row) => {
+        return await Promise.all(table.tabledata.filter((row) => {
             if (row.itemname && row.itemname.content) {
                 const matches = row.itemname.content.match(regex);
 
@@ -474,7 +474,7 @@ export class CoreGradesHelperProvider {
         // Find href containing "/mod/xxx/xxx.php".
         const regex = /href="([^"]*\/mod\/[^"|^/]*\/[^"|^.]*\.php[^"]*)/;
 
-        return table.tabledata.filter((row) => {
+        return await Promise.all(table.tabledata.filter((row) => {
             if (row.itemname && row.itemname.content) {
                 const matches = row.itemname.content.match(regex);
 
@@ -486,7 +486,7 @@ export class CoreGradesHelperProvider {
             }
 
             return false;
-        }).map((row) => this.formatGradeRowForTable(row));
+        }).map((row) => this.formatGradeRowForTable(row)));
     }
 
     /**
@@ -589,7 +589,7 @@ export class CoreGradesHelperProvider {
      * @param text HTML where the image will be rendered.
      * @return Row object with the image.
      */
-    protected setRowIcon<T extends CoreGradesFormattedRowCommonData>(row: T, text: string): T {
+    protected async setRowIcon<T extends CoreGradesFormattedRowCommonData>(row: T, text: string): Promise<T> {
         text = text.replace('%2F', '/').replace('%2f', '/');
         if (text.indexOf('/agg_mean') > -1) {
             row.itemtype = 'agg_mean';
@@ -621,7 +621,7 @@ export class CoreGradesHelperProvider {
                 row.itemtype = 'mod';
                 row.itemmodule = module[1];
                 row.iconAlt = CoreCourse.translateModuleName(row.itemmodule) || '';
-                row.image = CoreCourse.getModuleIconSrc(
+                row.image = await CoreCourse.getModuleIconSrc(
                     module[1],
                     CoreDomUtils.convertToElement(text).querySelector('img')?.getAttribute('src') ?? undefined,
                 );

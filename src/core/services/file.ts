@@ -24,10 +24,9 @@ import { CoreConstants } from '@/core/constants';
 import { CoreError } from '@classes/errors/error';
 
 import { CoreLogger } from '@singletons/logger';
-import { makeSingleton, File, Zip, WebView } from '@singletons';
+import { makeSingleton, File, Zip, Platform, WebView } from '@singletons';
 import { CoreFileEntry } from '@services/file-helper';
 import { CoreText } from '@singletons/text';
-import { CorePlatform } from '@services/platform';
 
 /**
  * Progress event used when writing a file data into a file.
@@ -137,7 +136,7 @@ export class CoreFileProvider {
             return;
         }
 
-        await CorePlatform.ready();
+        await Platform.ready();
 
         if (CoreApp.isAndroid()) {
             this.basePath = File.externalApplicationStorageDirectory || this.basePath;
@@ -834,9 +833,9 @@ export class CoreFileProvider {
             return this.copyOrMoveExternalFile(from, to, copy);
         }
 
-        const moveCopyFn: MoveCopyFunction = (...args) => copy ?
-            (isDir ? File.copyDir(...args) : File.copyFile(...args)) :
-            (isDir ? File.moveDir(...args) : File.moveFile(...args));
+        const moveCopyFn: MoveCopyFunction = copy ?
+            (isDir ? File.copyDir.bind(File.instance) : File.copyFile.bind(File.instance)) :
+            (isDir ? File.moveDir.bind(File.instance) : File.moveFile.bind(File.instance));
 
         await this.init();
 
@@ -854,16 +853,14 @@ export class CoreFileProvider {
         try {
             const entry = await moveCopyFn(this.basePath, from, this.basePath, to);
 
-            return <FileEntry | DirectoryEntry> entry;
+            return entry;
         } catch (error) {
             // The copy can fail if the path has encoded characters. Try again if that's the case.
             const decodedFrom = decodeURI(from);
             const decodedTo = decodeURI(to);
 
             if (from != decodedFrom || to != decodedTo) {
-                const entry = await moveCopyFn(this.basePath, decodedFrom, this.basePath, decodedTo);
-
-                return <FileEntry | DirectoryEntry> entry;
+                return moveCopyFn(this.basePath, decodedFrom, this.basePath, decodedTo);
             } else {
                 return Promise.reject(error);
             }
@@ -1207,7 +1204,7 @@ export class CoreFileProvider {
             });
 
             await Promise.all(promises);
-        } catch {
+        } catch (error) {
             // Ignore errors, maybe it doesn't exist.
         }
     }
@@ -1264,7 +1261,7 @@ export class CoreFileProvider {
      * @return Converted src.
      */
     convertFileSrc(src: string): string {
-        return CorePlatform.isMobile() ? WebView.convertFileSrc(src) : src;
+        return CoreApp.isMobile() ? WebView.convertFileSrc(src) : src;
     }
 
     /**
@@ -1274,7 +1271,7 @@ export class CoreFileProvider {
      * @return Unconverted src.
      */
     unconvertFileSrc(src: string): string {
-        if (!CorePlatform.isMobile()) {
+        if (!CoreApp.isMobile()) {
             return src;
         }
 
@@ -1309,4 +1306,4 @@ export class CoreFileProvider {
 
 export const CoreFile = makeSingleton(CoreFileProvider);
 
-type MoveCopyFunction = (path: string, name: string, newPath: string, newName: string) => Promise<Entry>;
+type MoveCopyFunction = (path: string, dirName: string, newPath: string, newDirName: string) => Promise<FileEntry | DirectoryEntry>;

@@ -66,9 +66,9 @@ export class AddonModFeedbackAttemptPage implements OnInit, OnDestroy {
     /**
      * @inheritdoc
      */
-    async ngOnInit(): Promise<void> {
+    ngOnInit(): void {
         try {
-            await this.attempts.start();
+            this.attempts.start();
         } catch (error) {
             CoreDomUtils.showErrorModal(error);
 

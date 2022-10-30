@@ -61,7 +61,7 @@ export class CoreCourseModulePrefetchDelegateService extends CoreDelegate<CoreCo
      * Initialize.
      */
     initialize(): void {
-        CoreEvents.on(CoreEvents.LOGOUT, () => this.clearStatusCache());
+        CoreEvents.on(CoreEvents.LOGOUT, this.clearStatusCache.bind(this));
 
         CoreEvents.on(CoreEvents.PACKAGE_STATUS_CHANGED, (data) => {
             this.updateStatusCache(data.status, data.component, data.componentId);
@@ -103,7 +103,7 @@ export class CoreCourseModulePrefetchDelegateService extends CoreDelegate<CoreCo
         }
 
         if (handler.canUseCheckUpdates) {
-            return handler.canUseCheckUpdates(module, courseId);
+            return await handler.canUseCheckUpdates(module, courseId);
         }
 
         // By default, modules can use check updates.
@@ -510,7 +510,7 @@ export class CoreCourseModulePrefetchDelegateService extends CoreDelegate<CoreCo
 
         if (handler?.getFiles) {
             // The handler defines a function to get files, use it.
-            return handler.getFiles(module, courseId);
+            return await handler.getFiles(module, courseId);
         } else if (handler?.loadContents) {
             // The handler defines a function to load contents, use it before returning module contents.
             await handler.loadContents(module, courseId);
@@ -772,17 +772,13 @@ export class CoreCourseModulePrefetchDelegateService extends CoreDelegate<CoreCo
             return { status: CoreConstants.NOT_DOWNLOADABLE };
         }
 
-        try {
-            // Get the stored data to get the status and downloadTime.
-            const data = await CoreFilepool.getPackageData(siteId, handler.component, module.id);
+        // Get the stored data to get the status and downloadTime.
+        const data = await CoreFilepool.getPackageData(siteId, handler.component, module.id);
 
-            return {
-                status: data.status || CoreConstants.NOT_DOWNLOADED,
-                downloadTime: data.downloadTime || 0,
-            };
-        } catch {
-            return { status: CoreConstants.NOT_DOWNLOADED };
-        }
+        return {
+            status: data.status || CoreConstants.NOT_DOWNLOADED,
+            downloadTime: data.downloadTime || 0,
+        };
     }
 
     /**
@@ -1000,7 +996,7 @@ export class CoreCourseModulePrefetchDelegateService extends CoreDelegate<CoreCo
 
         if (handler?.hasUpdates) {
             // Handler implements its own function to check the updates, use it.
-            return handler.hasUpdates(module, courseId, moduleUpdates);
+            return await handler.hasUpdates(module, courseId, moduleUpdates);
         } else if (!moduleUpdates || !moduleUpdates.updates || !moduleUpdates.updates.length) {
             // Module doesn't have any update.
             return false;
@@ -1045,13 +1041,13 @@ export class CoreCourseModulePrefetchDelegateService extends CoreDelegate<CoreCo
      * @param courseId Course ID the module belongs to.
      * @return Promise resolved when finished.
      */
-    async syncModules(modules: CoreCourseModuleData[], courseId: number): Promise<void> {
-        try {
-            await Promise.all(modules.map((module) => this.syncModule(module, courseId)));
-        } finally {
+    syncModules(modules: CoreCourseModuleData[], courseId: number): Promise<unknown> {
+        return Promise.all(modules.map(async (module) => {
+            await this.syncModule(module, courseId);
+
             // Invalidate course updates.
             await CoreUtils.ignoreErrors(this.invalidateCourseUpdates(courseId));
-        }
+        }));
     }
 
     /**

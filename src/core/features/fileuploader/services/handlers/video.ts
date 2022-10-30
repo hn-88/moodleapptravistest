@@ -15,7 +15,6 @@
 import { Injectable } from '@angular/core';
 
 import { CoreApp } from '@services/app';
-import { CorePlatform } from '@services/platform';
 import { CoreUtils } from '@services/utils/utils';
 import { makeSingleton } from '@singletons';
 import { CoreFileUploaderHandler, CoreFileUploaderHandlerData, CoreFileUploaderHandlerResult } from '../fileuploader-delegate';
@@ -35,7 +34,7 @@ export class CoreFileUploaderVideoHandlerService implements CoreFileUploaderHand
      * @return Promise resolved with true if enabled.
      */
     async isEnabled(): Promise<boolean> {
-        return CorePlatform.isMobile() || (CoreApp.canGetUserMedia() && CoreApp.canRecordMedia());
+        return CoreApp.isMobile() || (CoreApp.canGetUserMedia() && CoreApp.canRecordMedia());
     }
 
     /**

@@ -16,7 +16,7 @@ import { Injectable } from '@angular/core';
 import { CoreSyncBaseProvider } from '@classes/base-sync';
 import { CoreNetworkError } from '@classes/errors/network-error';
 import { CoreCourses } from '@features/courses/services/courses';
-import { CoreNetwork } from '@services/network';
+import { CoreApp } from '@services/app';
 import { CoreSites } from '@services/sites';
 import { CoreUtils } from '@services/utils/utils';
 import { Translate, makeSingleton } from '@singletons';
@@ -45,7 +45,7 @@ export class AddonNotesSyncProvider extends CoreSyncBaseProvider<AddonNotesSyncR
      * @return Promise resolved if sync is successful, rejected if sync fails.
      */
     syncAllNotes(siteId?: string, force?: boolean): Promise<void> {
-        return this.syncOnSites('all notes', (siteId) => this.syncAllNotesFunc(!!force, siteId), siteId);
+        return this.syncOnSites('all notes', this.syncAllNotesFunc.bind(this, !!force), siteId);
     }
 
     /**
@@ -148,7 +148,7 @@ export class AddonNotesSyncProvider extends CoreSyncBaseProvider<AddonNotesSyncR
             return result;
         }
 
-        if (!CoreNetwork.isOnline()) {
+        if (!CoreApp.isOnline()) {
             // Cannot sync in offline.
             throw new CoreNetworkError();
         }

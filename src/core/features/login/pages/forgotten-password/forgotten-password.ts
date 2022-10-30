@@ -17,11 +17,10 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 
 import { CoreDomUtils } from '@services/utils/dom';
 import { CoreLoginHelper } from '@features/login/services/login-helper';
-import { Translate } from '@singletons';
+import { Translate, Platform } from '@singletons';
 import { CoreWSExternalWarning } from '@services/ws';
 import { CoreNavigator } from '@services/navigator';
 import { CoreForms } from '@singletons/form';
-import { CorePlatform } from '@services/platform';
 
 /**
  * Page to recover a forgotten password.
@@ -56,7 +55,7 @@ export class CoreLoginForgottenPasswordPage implements OnInit {
         }
 
         this.siteUrl = siteUrl;
-        this.autoFocus = CorePlatform.is('tablet');
+        this.autoFocus = Platform.is('tablet');
         this.myForm = this.formBuilder.group({
             field: ['username', Validators.required],
             value: [CoreNavigator.getRouteParam<string>('username') || '', Validators.required],

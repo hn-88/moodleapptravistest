@@ -223,7 +223,7 @@ export class CoreH5PHelper {
             // Remove tmp folder.
             try {
                 await CoreFile.removeDir(destFolder);
-            } catch {
+            } catch (error) {
                 // Ignore errors, it will be deleted eventually.
             }
         }

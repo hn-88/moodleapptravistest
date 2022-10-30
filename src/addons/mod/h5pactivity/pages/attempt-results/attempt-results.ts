@@ -119,7 +119,7 @@ export class AddonModH5PActivityAttemptResultsPage implements OnInit {
 
         try {
             this.user = await CoreUser.getProfile(this.attempt.userid, this.courseId, true);
-        } catch {
+        } catch (error) {
             // Ignore errors.
         }
     }
