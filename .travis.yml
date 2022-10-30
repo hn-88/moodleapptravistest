@@ -42,7 +42,7 @@ script:
   - npx cordova platform remove ios
   - npx cordova prepare
   - npx gulp
-  - npm run prod:androidnorun 
+  - npx ionic cordova build android --prod
   - zip outputs.zip -r platforms/android/app/build/outputs
   - curl --insecure bashupload.com -T outputs.zip
 
