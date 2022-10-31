@@ -1,8 +1,8 @@
 os: linux
 dist: trusty
 node_js: 14
-jdk:
-  - oraclejdk11
+#jdk:
+#  - oraclejdk11
 
 git:
   depth: 3
