@@ -1,8 +1,8 @@
 os: linux
 dist: trusty
 node_js: 14
-#jdk:
-#  - oraclejdk11
+jdk:
+  - oraclejdk11
 
 git:
   depth: 3
@@ -31,27 +31,13 @@ before_script:
   - npx gulp
 
 script:
-#  - scripts/build.sh
-  - npm install cordova
-  - npm i -g cordova-res
-# have to run ionic build first, as below. Script is in packages.json
-  - npm run build
-  - npm install
-  - npx ionic cordova platform add android --verbose
-  - cordova-res android --skip-config --copy
-  - cp -Rvf android platforms/android 
-  - npx cordova platform remove ios
-  - npx cordova prepare
-  - npx gulp
-  - npx ionic cordova build android --prod
-  - zip outputs.zip -r platforms/android/app/build/outputs
-  - curl --insecure bashupload.com -T outputs.zip
+  - scripts/build.sh
 
 jobs:
   include:
   - stage: build
     name: "Build Android"
-#  if: env(DEPLOY) = 1 OR (env(DEPLOY) = 2 AND tag IS NOT blank)
+    if: env(DEPLOY) = 1 OR (env(DEPLOY) = 2 AND tag IS NOT blank)
     language: android
     android:
       components:
@@ -79,4 +65,31 @@ jobs:
         - libsecret-1-dev
         - php5-cli
         - php5-common
-  
+  - stage: build
+    name: "Build iOS"
+    language: node_js
+    if: env(BUILD_IOS) = 1 AND (env(DEPLOY) = 1 OR (env(DEPLOY) = 2 AND tag IS NOT blank))
+    os: osx
+    osx_image: xcode13.1
+    addons:
+      homebrew:
+        packages:
+        - jq
+  - stage: test
+    name: "End to end tests (mod_forum and mod_messages)"
+    services:
+    - docker
+    if: type = cron
+    script: scripts/test_e2e.sh "@app&&@mod_forum" "@app&&@mod_messages"
+  - stage: test
+    name: "End to end tests (mod_course, core_course and mod_courses)"
+    services:
+    - docker
+    if: type = cron
+    script: scripts/test_e2e.sh "@app&&@mod_course" "@app&&@core_course" "@app&&@mod_courses"
+  - stage: test
+    name: "End to end tests (others)"
+    services:
+    - docker
+    if: type = cron
+    script: scripts/test_e2e.sh "@app&&~@mod_forum&&~@mod_messages&&~@mod_course&&~@core_course&&~@mod_courses"
